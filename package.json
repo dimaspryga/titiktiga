@@ -66,6 +66,7 @@
     "zustand": "5.0.8"
   },
   "scripts": {
+    "db:init": "node scripts/init-db.mjs",
     "dev": "next dev -H 0.0.0.0 -p 3000",
     "start": "next dev -H 0.0.0.0 -p 3000",
     "build": "next build",
