@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/lib/mysql";
 import { createAuthToken, setAuthCookie } from "@/lib/auth-session";
+import { applicationUrl, optionalEnv } from "@/lib/runtime-env";
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code");
@@ -10,14 +11,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL("/login?google=failed", req.url));
   }
 
-  const callback = new URL("/api/auth/google/callback", process.env.APP_URL ?? "http://localhost:3000");
+  const callback = new URL("/api/auth/google/callback", applicationUrl(req.url));
   const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       code,
-      client_id: process.env.GOOGLE_CLIENT_ID ?? "",
-      client_secret: process.env.GOOGLE_CLIENT_SECRET ?? "",
+      client_id: optionalEnv("GOOGLE_CLIENT_ID"),
+      client_secret: optionalEnv("GOOGLE_CLIENT_SECRET"),
       redirect_uri: callback.toString(),
       grant_type: "authorization_code",
     }),

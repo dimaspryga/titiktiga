@@ -1,13 +1,14 @@
 import mysql from "mysql2/promise";
+import { mysqlSslEnabled, mysqlSslRejectUnauthorized, optionalEnv } from "@/lib/runtime-env";
 
-const sslEnabled = process.env.MYSQL_SSL === "true";
+const sslEnabled = mysqlSslEnabled();
 const baseOptions = {
   waitForConnections: true,
   connectionLimit: 10,
   namedPlaceholders: true,
   timezone: "Z",
   supportBigNumbers: true,
-  ...(sslEnabled ? { ssl: { rejectUnauthorized: process.env.MYSQL_SSL_REJECT_UNAUTHORIZED !== "false" } } : {}),
+  ...(sslEnabled ? { ssl: { rejectUnauthorized: mysqlSslRejectUnauthorized() } } : {}),
 };
 
 function poolOptionsFromUrl(urlValue: string): mysql.PoolOptions {
@@ -23,15 +24,16 @@ function poolOptionsFromUrl(urlValue: string): mysql.PoolOptions {
   };
 }
 
-const pool = process.env.MYSQL_URL
-  ? mysql.createPool(poolOptionsFromUrl(process.env.MYSQL_URL))
+const mysqlUrl = optionalEnv("MYSQL_URL");
+const pool = mysqlUrl
+  ? mysql.createPool(poolOptionsFromUrl(mysqlUrl))
   : mysql.createPool({
       ...baseOptions,
-      host: process.env.MYSQL_HOST ?? "127.0.0.1",
-      port: Number(process.env.MYSQL_PORT ?? 3306),
-      user: process.env.MYSQL_USER ?? "root",
-      password: process.env.MYSQL_PASSWORD ?? "",
-      database: process.env.MYSQL_DATABASE ?? "titiktiga",
+      host: optionalEnv("MYSQL_HOST", "127.0.0.1"),
+      port: Number(optionalEnv("MYSQL_PORT", "3306")),
+      user: optionalEnv("MYSQL_USER", "root"),
+      password: optionalEnv("MYSQL_PASSWORD"),
+      database: optionalEnv("MYSQL_DATABASE", "titiktiga"),
     });
 
 export default pool;

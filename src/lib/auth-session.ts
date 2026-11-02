@@ -1,12 +1,11 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import { requiredEnv } from "@/lib/runtime-env";
 
 export const AUTH_COOKIE = "titiktiga_session";
 
 function secret() {
-  const value = process.env.JWT_SECRET;
-  if (!value) throw new Error("JWT_SECRET belum dikonfigurasi");
-  return new TextEncoder().encode(value);
+  return new TextEncoder().encode(requiredEnv("JWT_SECRET"));
 }
 
 export type AuthTokenPayload = {

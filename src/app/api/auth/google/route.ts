@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
+import { applicationUrl, optionalEnv } from "@/lib/runtime-env";
 
 export async function GET(req: NextRequest) {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientId = optionalEnv("GOOGLE_CLIENT_ID");
   if (!clientId) return NextResponse.redirect(new URL("/login?google=not-configured", req.url));
   const state = randomBytes(24).toString("hex");
-  const callback = new URL("/api/auth/google/callback", process.env.APP_URL ?? "http://localhost:3000");
+  const callback = new URL("/api/auth/google/callback", applicationUrl(req.url));
   const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   url.searchParams.set("client_id", clientId);
   url.searchParams.set("redirect_uri", callback.toString());

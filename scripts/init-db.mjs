@@ -3,8 +3,9 @@ import path from "node:path";
 import mysql from "mysql2/promise";
 
 function connectionOptions() {
-  if (process.env.MYSQL_URL) {
-    const url = new URL(process.env.MYSQL_URL);
+  const mysqlUrl = process.env.MYSQL_URL?.trim();
+  if (mysqlUrl) {
+    const url = new URL(mysqlUrl);
     return {
       host: url.hostname,
       port: url.port ? Number(url.port) : 3306,

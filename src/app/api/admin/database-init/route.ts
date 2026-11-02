@@ -2,26 +2,28 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import mysql from "mysql2/promise";
 import { NextRequest, NextResponse } from "next/server";
+import { mysqlSslEnabled, mysqlSslRejectUnauthorized, optionalEnv, requiredEnv } from "@/lib/runtime-env";
 
 function connectionOptions(): mysql.ConnectionOptions {
-  if (process.env.MYSQL_URL) {
-    const url = new URL(process.env.MYSQL_URL);
+  const mysqlUrl = optionalEnv("MYSQL_URL");
+  if (mysqlUrl) {
+    const url = new URL(mysqlUrl);
     return {
       host: url.hostname,
       port: url.port ? Number(url.port) : 3306,
       user: decodeURIComponent(url.username),
       password: decodeURIComponent(url.password),
       database: decodeURIComponent(url.pathname.replace(/^\//, "")),
-      ssl: process.env.MYSQL_SSL === "true" ? { rejectUnauthorized: process.env.MYSQL_SSL_REJECT_UNAUTHORIZED !== "false" } : undefined,
+      ssl: mysqlSslEnabled() ? { rejectUnauthorized: mysqlSslRejectUnauthorized() } : undefined,
     };
   }
 
   return {
-    host: process.env.MYSQL_HOST ?? "127.0.0.1",
-    port: Number(process.env.MYSQL_PORT ?? 3306),
-    user: process.env.MYSQL_USER ?? "root",
-    password: process.env.MYSQL_PASSWORD ?? "",
-    database: process.env.MYSQL_DATABASE ?? "titiktiga",
+    host: optionalEnv("MYSQL_HOST", "127.0.0.1"),
+    port: Number(optionalEnv("MYSQL_PORT", "3306")),
+    user: optionalEnv("MYSQL_USER", "root"),
+    password: optionalEnv("MYSQL_PASSWORD"),
+    database: optionalEnv("MYSQL_DATABASE", "titiktiga"),
   };
 }
 
@@ -35,9 +37,11 @@ function prepareSql(sql: string) {
 }
 
 export async function POST(request: NextRequest) {
-  const secret = process.env.DB_INIT_SECRET;
-  if (!secret) {
-    return NextResponse.json({ error: "DB_INIT_SECRET belum dikonfigurasi" }, { status: 503 });
+  let secret: string;
+  try {
+    secret = requiredEnv("DB_INIT_SECRET");
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "DB_INIT_SECRET belum dikonfigurasi" }, { status: 503 });
   }
 
   const suppliedSecret = request.headers.get("x-init-secret") ?? "";
