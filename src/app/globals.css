@@ -1,0 +1,138 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 42 38% 95%;
+    --foreground: 45 14% 10%;
+    --card: 45 32% 97%;
+    --card-foreground: 45 14% 10%;
+    --popover: 45 32% 98%;
+    --popover-foreground: 45 14% 10%;
+    --primary: 45 14% 10%;
+    --primary-foreground: 42 38% 95%;
+    --secondary: 44 20% 90%;
+    --secondary-foreground: 45 14% 10%;
+    --muted: 44 22% 90%;
+    --muted-foreground: 44 8% 38%;
+    --accent: 44 26% 91%;
+    --accent-foreground: 45 14% 10%;
+    --destructive: 0 72% 46%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 44 12% 84%;
+    --input: 44 12% 80%;
+    --ring: 74 88% 45%;
+    --lime: 74 88% 59%;
+    --lime-foreground: 60 14% 10%;
+    --radius: 2px;
+  }
+  .dark {
+    --background: 45 10% 7%;
+    --foreground: 43 30% 92%;
+    --card: 45 11% 10%;
+    --card-foreground: 43 30% 92%;
+    --popover: 45 11% 9%;
+    --popover-foreground: 43 30% 92%;
+    --primary: 43 30% 92%;
+    --primary-foreground: 45 10% 7%;
+    --secondary: 45 8% 16%;
+    --secondary-foreground: 43 30% 92%;
+    --muted: 45 8% 14%;
+    --muted-foreground: 45 8% 60%;
+    --accent: 45 8% 17%;
+    --accent-foreground: 43 30% 92%;
+    --destructive: 0 63% 45%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 45 8% 18%;
+    --input: 45 8% 22%;
+    --ring: 74 90% 60%;
+    --lime: 74 95% 60%;
+    --lime-foreground: 60 14% 10%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    scroll-behavior: smooth;
+    scrollbar-gutter: stable !important;
+  }
+  html body[data-scroll-locked] {
+    --removed-body-scroll-bar-size: 0px !important;
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+    padding-right: 0 !important;
+    padding-left: 0 !important;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    @apply bg-lime text-lime-foreground;
+  }
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+  input,
+  textarea,
+  select,
+  button {
+    font: inherit;
+  }
+}
+
+@layer utilities {
+  .texture-grain {
+    position: relative;
+  }
+  .texture-grain::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.5;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E");
+  }
+  .link-underline {
+    background-image: linear-gradient(currentColor, currentColor);
+    background-size: 0% 1px;
+    background-repeat: no-repeat;
+    background-position: 0 100%;
+    transition: background-size 0.4s cubic-bezier(0.83, 0, 0.17, 1);
+  }
+  .link-underline:hover {
+    background-size: 100% 1px;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .marquee-paused:hover .marquee-track {
+    animation-play-state: paused;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .animate-marquee,
+  .marquee-track {
+    animation: none !important;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
