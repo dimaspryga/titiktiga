@@ -4,6 +4,7 @@ import supabase from "@/lib/supabase";
 import { supabaseServiceRoleKey } from "@/lib/runtime-env";
 
 const STORAGE_BUCKET = "payment-proofs";
+const PROOF_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 export const runtime = "nodejs";
 
@@ -47,7 +48,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ord
     return NextResponse.json({ error: "Bukti hanya dapat diunggah untuk pembayaran transfer" }, { status: 400 });
   }
 
-  if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+  if (!PROOF_MIME_TYPES.includes(file.type)) {
     return NextResponse.json({ error: "Format harus JPG, PNG, atau WebP" }, { status: 400 });
   }
 
@@ -58,13 +59,38 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ord
 
   const ext = file.type === "image/jpeg" ? "jpg" : file.type.split("/")[1];
   const storagePath = `${orderId}/${randomUUID()}.${ext}`;
-  const { error: storageError } = await supabase.storage
+  const storage = supabase.storage;
+  const uploadOptions = {
+    contentType: file.type,
+    cacheControl: "3600",
+    upsert: false,
+  };
+  let { error: storageError } = await storage
     .from(STORAGE_BUCKET)
     .upload(storagePath, Buffer.from(bytes), {
-      contentType: file.type,
-      cacheControl: "3600",
-      upsert: false,
+      ...uploadOptions,
     });
+
+  if (storageError?.message.toLowerCase().includes("bucket not found")) {
+    const { error: createBucketError } = await storage.createBucket(STORAGE_BUCKET, {
+      public: true,
+      fileSizeLimit: 5 * 1024 * 1024,
+      allowedMimeTypes: PROOF_MIME_TYPES,
+    });
+
+    if (createBucketError && !createBucketError.message.toLowerCase().includes("already exists")) {
+      console.error("Payment proof storage bucket creation failed", createBucketError);
+      return NextResponse.json(
+        { error: `Bucket penyimpanan bukti pembayaran belum tersedia dan gagal dibuat: ${createBucketError.message}` },
+        { status: 502 }
+      );
+    }
+
+    const retry = await storage
+      .from(STORAGE_BUCKET)
+      .upload(storagePath, Buffer.from(bytes), uploadOptions);
+    storageError = retry.error;
+  }
 
   if (storageError) {
     console.error("Payment proof storage upload failed", storageError);
