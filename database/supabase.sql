@@ -211,6 +211,21 @@ CREATE TABLE IF NOT EXISTS public.payment_proofs (
 
 CREATE INDEX IF NOT EXISTS payment_proofs_order_id_idx ON public.payment_proofs(order_id);
 
+-- Bukti transfer disimpan di Supabase Storage agar tetap tersedia pada deployment serverless.
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'payment-proofs',
+  'payment-proofs',
+  TRUE,
+  5242880,
+  ARRAY['image/jpeg', 'image/png', 'image/webp']
+)
+ON CONFLICT (id) DO UPDATE
+SET name = EXCLUDED.name,
+    public = EXCLUDED.public,
+    file_size_limit = EXCLUDED.file_size_limit,
+    allowed_mime_types = EXCLUDED.allowed_mime_types;
+
 CREATE TABLE IF NOT EXISTS public.payment_accounts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   bank_name VARCHAR(100) NOT NULL,

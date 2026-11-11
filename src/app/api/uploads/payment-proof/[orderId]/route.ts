@@ -1,17 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
-import { unlink, writeFile, mkdir } from "fs/promises";
-import path from "path";
 import supabase from "@/lib/supabase";
+import { supabaseServiceRoleKey } from "@/lib/runtime-env";
+
+const STORAGE_BUCKET = "payment-proofs";
+
+export const runtime = "nodejs";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ orderId: string }> }) {
-  const { orderId } = await params;
-  const form = await req.formData();
-  const formFile = form.get("proof");
-  const file = formFile instanceof File ? formFile : null;
+  let orderId: string;
+  let file: File | null;
+  try {
+    ({ orderId } = await params);
+    const form = await req.formData();
+    const formFile = form.get("proof");
+    file = formFile instanceof File ? formFile : null;
+  } catch (error) {
+    console.error("Payment proof request could not be read", error);
+    return NextResponse.json({ error: "Permintaan unggah bukti pembayaran tidak dapat dibaca" }, { status: 400 });
+  }
 
   if (!file) {
     return NextResponse.json({ error: "Screenshot bukti transfer wajib dipilih" }, { status: 400 });
+  }
+
+  if (!supabaseServiceRoleKey()) {
+    return NextResponse.json(
+      { error: "Unggah bukti pembayaran belum dikonfigurasi. Pastikan SUPABASE_SERVICE_ROLE_KEY tersedia di server." },
+      { status: 503 }
+    );
   }
 
   const { data: order, error: orderError } = await supabase
@@ -39,16 +56,25 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ord
     return NextResponse.json({ error: "Ukuran maksimal 5 MB" }, { status: 400 });
   }
 
-  const ext = (file.name.split(".").pop() || "jpg").replace(/[^a-z0-9]/gi, "").toLowerCase();
-  const name = `${randomUUID()}.${ext}`;
+  const ext = file.type === "image/jpeg" ? "jpg" : file.type.split("/")[1];
+  const storagePath = `${orderId}/${randomUUID()}.${ext}`;
+  const { error: storageError } = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .upload(storagePath, Buffer.from(bytes), {
+      contentType: file.type,
+      cacheControl: "3600",
+      upsert: false,
+    });
 
-  const uploadDirectory = path.join(process.cwd(), "public", "uploads");
-  const absolutePath = path.join(uploadDirectory, name);
-  await mkdir(uploadDirectory, { recursive: true });
-  await writeFile(absolutePath, Buffer.from(bytes));
+  if (storageError) {
+    console.error("Payment proof storage upload failed", storageError);
+    return NextResponse.json(
+      { error: `File bukti pembayaran gagal diunggah ke Supabase Storage: ${storageError.message}` },
+      { status: 502 }
+    );
+  }
 
-  const filePath = `/uploads/${name}`;
-
+  const filePath = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(storagePath).data.publicUrl;
   const { error: proofError } = await supabase.from("payment_proofs").insert({
     order_id: orderId,
     original_name: file.name,
@@ -59,9 +85,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ord
   });
 
   if (proofError) {
-    await unlink(absolutePath).catch((error: NodeJS.ErrnoException) => {
-      if (error.code !== "ENOENT") throw error;
-    });
+    console.error("Payment proof database insert failed", proofError);
+    const { error: cleanupError } = await supabase.storage.from(STORAGE_BUCKET).remove([storagePath]);
+    if (cleanupError) console.error("Payment proof storage cleanup failed", cleanupError);
     return NextResponse.json({ error: proofError.message }, { status: 500 });
   }
 
@@ -71,6 +97,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ord
     .eq("id", orderId);
 
   if (orderUpdateError) {
+    console.error("Order payment status update failed", orderUpdateError);
+    const { error: proofCleanupError } = await supabase.from("payment_proofs").delete().eq("order_id", orderId).eq("file_path", filePath);
+    const { error: storageCleanupError } = await supabase.storage.from(STORAGE_BUCKET).remove([storagePath]);
+    if (proofCleanupError) console.error("Payment proof database cleanup failed", proofCleanupError);
+    if (storageCleanupError) console.error("Payment proof storage cleanup failed", storageCleanupError);
     return NextResponse.json({ error: orderUpdateError.message }, { status: 500 });
   }
 

@@ -15,7 +15,7 @@ Frontend Next.js terhubung ke REST API lokal yang didukung oleh database Supabas
    ```bash
    npm run db:init
    ```
-5. Checkout transfer bank menerima screenshot bukti transfer (JPG/PNG/WebP, maks. 5 MB). Bukti dicatat di Supabase dan dapat ditinjau admin pada halaman pesanan.
+5. Checkout transfer bank menerima screenshot bukti transfer (JPG/PNG/WebP, maks. 5 MB). File disimpan di bucket `payment-proofs` Supabase Storage dan catatannya disimpan di database untuk ditinjau admin. Pastikan `SUPABASE_SERVICE_ROLE_KEY` tersedia di server, lalu jalankan skema database terbaru agar bucket dibuat.
 6. Atur kredensial SMTP dan `APP_URL` di `.env.local` untuk email verifikasi akun dan reset kata sandi. Tautan reset kata sandi berlaku selama 1 jam.
 7. Media produk mendukung gambar JPG/PNG/WebP (maks. 5 MB) dan video MP4/WebM/MOV/OGG (maks. 30 MB). Jalankan skema database terkini agar tabel `password_reset_tokens` tersedia.
 
