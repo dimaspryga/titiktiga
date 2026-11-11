@@ -37,6 +37,13 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (userError || !user) {
+    const rawMsg = userError?.message || "";
+    if (rawMsg.toLowerCase().includes("invalid api key") || rawMsg.toLowerCase().includes("jwt")) {
+      return NextResponse.json(
+        { error: "Koneksi database Supabase belum terkonfigurasi. Pastikan API key sudah dimasukkan di Environment Variables Vercel." },
+        { status: 500 }
+      );
+    }
     return NextResponse.json({ error: userError?.message ?? "Gagal mendaftar akun" }, { status: 500 });
   }
 
