@@ -19,7 +19,7 @@ import { useI18n } from "@/lib/i18n";
 
 export default function AdminSettingsPage() {
   const { t } = useI18n();
-  const { data: content } = useContent();
+  const { content, updateContent } = useContent();
   const { data: midtransStatus, refetch: refetchMidtrans } = useMidtransStatus();
   const [store, setStore] = useState(content?.store);
   const [saving, setSaving] = useState(false);
@@ -89,8 +89,7 @@ export default function AdminSettingsPage() {
           disabled={saving}
           onClick={async () => {
             setSaving(true);
-            await contentRepo.update({ store });
-            revalidateAll();
+            await updateContent({ store });
             toast.success(t("admin.saved"));
             setSaving(false);
           }}

@@ -21,7 +21,7 @@ import { formatIDR } from "@/lib/utils";
 
 export default function AdminVouchersPage() {
   const { t } = useI18n();
-  const { data: vouchers } = useVouchers();
+  const { vouchers, createVoucher, updateVoucher, deleteVoucher } = useVouchers();
   const { data: categories } = useCategories();
   const [editing, setEditing] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -95,17 +95,15 @@ export default function AdminVouchersPage() {
       active: values.active,
       eligibleCategories: eligible.length > 0 ? eligible : null,
     };
-    if (editing) await voucherRepo.update(editing, payload);
-    else await voucherRepo.create(payload);
-    revalidateAll();
+    if (editing) await updateVoucher(editing, payload);
+    else await createVoucher(payload);
     toast.success(t("admin.saved"));
     setSubmitting(false);
     setOpen(false);
   };
 
   const handleDelete = async (id: string) => {
-    await voucherRepo.remove(id);
-    revalidateAll();
+    await deleteVoucher(id);
     toast.success(t("admin.deleted"));
   };
 

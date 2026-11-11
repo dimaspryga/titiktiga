@@ -6,8 +6,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import { ProductForm } from "@/components/admin/product-form";
-import { productRepo } from "@/lib/repositories";
-import { revalidateAll, useProduct } from "@/lib/hooks";
+import { useProduct } from "@/lib/hooks";
 import { useI18n } from "@/lib/i18n";
 import type { ProductInput } from "@/lib/types";
 
@@ -16,12 +15,11 @@ export default function EditProductPage() {
   const { t } = useI18n();
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
-  const { data: product, isLoading } = useProduct(params?.id);
+  const { product, isLoading, updateProduct } = useProduct(params?.id);
 
   const handle = async (values: ProductInput) => {
     setSubmitting(true);
-    await productRepo.update(params!.id, values);
-    revalidateAll();
+    await updateProduct(values);
     toast.success(t("admin.saved"));
     setSubmitting(false);
   };

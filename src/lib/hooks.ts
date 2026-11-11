@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { mutate as globalMutate } from "swr";
 import { invalidateAllQueries } from "@/lib/query-client";
 import {
@@ -40,8 +40,8 @@ import type {
 } from "@/lib/types";
 
 // Invalidate both TanStack Query and SWR caches across the application
-export function revalidateAll() {
-  invalidateAllQueries();
+export async function revalidateAll(): Promise<void> {
+  await invalidateAllQueries();
   void globalMutate(() => true, undefined, { revalidate: true });
 }
 
@@ -52,7 +52,7 @@ export function useProductsQuery(query: ProductQuery = {}) {
   return useQuery<Paged<Product>>({
     queryKey: ["products", query],
     queryFn: () => productRepo.list(query),
-    placeholderData: (previousData) => previousData,
+    placeholderData: (previousData: Paged<Product> | undefined) => previousData,
   });
 }
 
@@ -60,19 +60,92 @@ export function useProducts(query: ProductQuery = {}) {
   const queryClient = useQueryClient();
   const q = useProductsQuery(query);
 
-  const createMutation = useMutation({
+  const createMutation = useMutation<Product, Error, ProductInput>({
     mutationFn: (input: ProductInput) => productRepo.create(input),
-    onSuccess: () => revalidateAll(),
+    onSuccess: async (newProduct: Product) => {
+      // Optimistic / Immediate Cache Update ke semua query produk aktif
+      queryClient.setQueriesData<Paged<Product>>({ queryKey: ["products"] }, (old: Paged<Product> | undefined) => {
+        if (!old) return old;
+        const exists = old.items.some((p: Product) => p.id === newProduct.id);
+        return {
+          ...old,
+          items: exists ? old.items.map((p: Product) => (p.id === newProduct.id ? newProduct : p)) : [newProduct, ...old.items],
+          total: exists ? old.total : old.total + 1,
+        };
+      });
+      queryClient.setQueryData<Product>(["product", newProduct.id], newProduct);
+      queryClient.setQueryData<Product>(["product", newProduct.slug], newProduct);
+      await queryClient.invalidateQueries({ queryKey: ["products"] });
+      await revalidateAll();
+    },
   });
 
-  const updateMutation = useMutation({
+  const updateMutation = useMutation<
+    Product,
+    Error,
+    { id: string; patch: Partial<ProductInput> },
+    { previousProducts: [QueryKey, Paged<Product> | undefined][] }
+  >({
     mutationFn: ({ id, patch }: { id: string; patch: Partial<ProductInput> }) => productRepo.update(id, patch),
-    onSuccess: () => revalidateAll(),
+    onMutate: async ({ id, patch }) => {
+      await queryClient.cancelQueries({ queryKey: ["products"] });
+      const previousProducts = queryClient.getQueriesData<Paged<Product>>({ queryKey: ["products"] });
+      queryClient.setQueriesData<Paged<Product>>({ queryKey: ["products"] }, (old: Paged<Product> | undefined) => {
+        if (!old) return old;
+        return {
+          ...old,
+          items: old.items.map((p: Product) => (p.id === id ? { ...p, ...patch } : p)),
+        };
+      });
+      return { previousProducts };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousProducts) {
+        for (const [key, data] of context.previousProducts) {
+          queryClient.setQueryData(key, data);
+        }
+      }
+    },
+    onSettled: async (_data, _error, variables) => {
+      if (variables?.id) {
+        await queryClient.invalidateQueries({ queryKey: ["product", variables.id] });
+      }
+      await queryClient.invalidateQueries({ queryKey: ["products"] });
+      await revalidateAll();
+    },
   });
 
-  const deleteMutation = useMutation({
+  const deleteMutation = useMutation<
+    boolean,
+    Error,
+    string,
+    { previousProducts: [QueryKey, Paged<Product> | undefined][] }
+  >({
     mutationFn: (id: string) => productRepo.remove(id),
-    onSuccess: () => revalidateAll(),
+    onMutate: async (deletedId: string) => {
+      await queryClient.cancelQueries({ queryKey: ["products"] });
+      const previousProducts = queryClient.getQueriesData<Paged<Product>>({ queryKey: ["products"] });
+      queryClient.setQueriesData<Paged<Product>>({ queryKey: ["products"] }, (old: Paged<Product> | undefined) => {
+        if (!old) return old;
+        return {
+          ...old,
+          items: old.items.filter((p: Product) => p.id !== deletedId),
+          total: Math.max(0, old.total - 1),
+        };
+      });
+      return { previousProducts };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previousProducts) {
+        for (const [key, data] of context.previousProducts) {
+          queryClient.setQueryData(key, data);
+        }
+      }
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["products"] });
+      await revalidateAll();
+    },
   });
 
   return {
@@ -110,12 +183,34 @@ export function useProduct(slugOrId?: string) {
   const queryClient = useQueryClient();
   const q = useProductQuery(slugOrId);
 
-  const updateMutation = useMutation({
+  const updateMutation = useMutation<Product, Error, Partial<ProductInput>, { prev?: Product | null }>({
     mutationFn: (patch: Partial<ProductInput>) => {
       if (!q.data?.id) throw new Error("Product ID not loaded");
       return productRepo.update(q.data.id, patch);
     },
-    onSuccess: () => revalidateAll(),
+    onMutate: async (patch: Partial<ProductInput>) => {
+      if (slugOrId) {
+        await queryClient.cancelQueries({ queryKey: ["product", slugOrId] });
+        const prev = queryClient.getQueryData<Product>(["product", slugOrId]);
+        if (prev) {
+          queryClient.setQueryData<Product>(["product", slugOrId], { ...prev, ...patch });
+        }
+        return { prev };
+      }
+      return {};
+    },
+    onError: (_err, _vars, context) => {
+      if (slugOrId && context?.prev) {
+        queryClient.setQueryData(["product", slugOrId], context.prev);
+      }
+    },
+    onSettled: async () => {
+      if (slugOrId) {
+        await queryClient.invalidateQueries({ queryKey: ["product", slugOrId] });
+      }
+      await queryClient.invalidateQueries({ queryKey: ["products"] });
+      await revalidateAll();
+    },
   });
 
   return {
@@ -144,19 +239,60 @@ export function useCategories() {
   const queryClient = useQueryClient();
   const q = useCategoriesQuery();
 
-  const createMutation = useMutation({
+  const createMutation = useMutation<Category, Error, Omit<Category, "id">>({
     mutationFn: (input: Omit<Category, "id">) => categoryRepo.create(input),
-    onSuccess: () => revalidateAll(),
+    onSuccess: async (newCat: Category) => {
+      // Optimistic cache append
+      queryClient.setQueryData<Category[]>(["categories"], (old: Category[] = []) => {
+        const exists = old.some((c: Category) => c.id === newCat.id);
+        return exists ? old.map((c: Category) => (c.id === newCat.id ? newCat : c)) : [...old, newCat];
+      });
+      await queryClient.invalidateQueries({ queryKey: ["categories"] });
+      await revalidateAll();
+    },
   });
 
-  const updateMutation = useMutation({
+  const updateMutation = useMutation<
+    Category,
+    Error,
+    { id: string; patch: Partial<Category> },
+    { prev?: Category[] }
+  >({
     mutationFn: ({ id, patch }: { id: string; patch: Partial<Category> }) => categoryRepo.update(id, patch),
-    onSuccess: () => revalidateAll(),
+    onMutate: async ({ id, patch }) => {
+      await queryClient.cancelQueries({ queryKey: ["categories"] });
+      const prev = queryClient.getQueryData<Category[]>(["categories"]);
+      queryClient.setQueryData<Category[]>(["categories"], (old: Category[] = []) =>
+        old.map((c: Category) => (c.id === id ? { ...c, ...patch } : c))
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(["categories"], ctx.prev);
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["categories"] });
+      await revalidateAll();
+    },
   });
 
-  const deleteMutation = useMutation({
+  const deleteMutation = useMutation<boolean, Error, string, { prev?: Category[] }>({
     mutationFn: (id: string) => categoryRepo.remove(id),
-    onSuccess: () => revalidateAll(),
+    onMutate: async (deletedId: string) => {
+      await queryClient.cancelQueries({ queryKey: ["categories"] });
+      const prev = queryClient.getQueryData<Category[]>(["categories"]);
+      queryClient.setQueryData<Category[]>(["categories"], (old: Category[] = []) =>
+        old.filter((c: Category) => c.id !== deletedId)
+      );
+      return { prev };
+    },
+    onError: (_err, _id, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(["categories"], ctx.prev);
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["categories"] });
+      await revalidateAll();
+    },
   });
 
   return {
@@ -187,19 +323,59 @@ export function useVouchers() {
   const queryClient = useQueryClient();
   const q = useVouchersQuery();
 
-  const createMutation = useMutation({
+  const createMutation = useMutation<Voucher, Error, Omit<Voucher, "id" | "usedCount">>({
     mutationFn: (input: Omit<Voucher, "id" | "usedCount">) => voucherRepo.create(input),
-    onSuccess: () => revalidateAll(),
+    onSuccess: async (newVoucher: Voucher) => {
+      queryClient.setQueryData<Voucher[]>(["vouchers"], (old: Voucher[] = []) => {
+        const exists = old.some((v: Voucher) => v.id === newVoucher.id);
+        return exists ? old.map((v: Voucher) => (v.id === newVoucher.id ? newVoucher : v)) : [newVoucher, ...old];
+      });
+      await queryClient.invalidateQueries({ queryKey: ["vouchers"] });
+      await revalidateAll();
+    },
   });
 
-  const updateMutation = useMutation({
+  const updateMutation = useMutation<
+    Voucher,
+    Error,
+    { id: string; patch: Partial<Voucher> },
+    { prev?: Voucher[] }
+  >({
     mutationFn: ({ id, patch }: { id: string; patch: Partial<Voucher> }) => voucherRepo.update(id, patch),
-    onSuccess: () => revalidateAll(),
+    onMutate: async ({ id, patch }) => {
+      await queryClient.cancelQueries({ queryKey: ["vouchers"] });
+      const prev = queryClient.getQueryData<Voucher[]>(["vouchers"]);
+      queryClient.setQueryData<Voucher[]>(["vouchers"], (old: Voucher[] = []) =>
+        old.map((v: Voucher) => (v.id === id ? { ...v, ...patch } : v))
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(["vouchers"], ctx.prev);
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["vouchers"] });
+      await revalidateAll();
+    },
   });
 
-  const deleteMutation = useMutation({
+  const deleteMutation = useMutation<boolean, Error, string, { prev?: Voucher[] }>({
     mutationFn: (id: string) => voucherRepo.remove(id),
-    onSuccess: () => revalidateAll(),
+    onMutate: async (deletedId: string) => {
+      await queryClient.cancelQueries({ queryKey: ["vouchers"] });
+      const prev = queryClient.getQueryData<Voucher[]>(["vouchers"]);
+      queryClient.setQueryData<Voucher[]>(["vouchers"], (old: Voucher[] = []) =>
+        old.filter((v: Voucher) => v.id !== deletedId)
+      );
+      return { prev };
+    },
+    onError: (_err, _id, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(["vouchers"], ctx.prev);
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["vouchers"] });
+      await revalidateAll();
+    },
   });
 
   return {
@@ -225,7 +401,7 @@ export function useOrdersQuery(query: OrderQuery = {}) {
   return useQuery<Paged<Order>>({
     queryKey: ["orders", query],
     queryFn: () => orderRepo.list(query),
-    placeholderData: (previousData) => previousData,
+    placeholderData: (previousData: Paged<Order> | undefined) => previousData,
   });
 }
 
@@ -233,20 +409,85 @@ export function useOrders(query: OrderQuery = {}) {
   const queryClient = useQueryClient();
   const q = useOrdersQuery(query);
 
-  const createMutation = useMutation({
+  const createMutation = useMutation<Order, Error, OrderInput>({
     mutationFn: (input: OrderInput) => orderRepo.create(input),
-    onSuccess: () => revalidateAll(),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["orders"] });
+      await revalidateAll();
+    },
   });
 
-  const updateStatusMutation = useMutation({
+  const updateStatusMutation = useMutation<
+    Order,
+    Error,
+    { id: string; status: string },
+    { prevOrders: [QueryKey, Paged<Order> | undefined][] }
+  >({
     mutationFn: ({ id, status }: { id: string; status: string }) => orderRepo.updateStatus(id, status),
-    onSuccess: () => revalidateAll(),
+    onMutate: async ({ id, status }) => {
+      await queryClient.cancelQueries({ queryKey: ["orders"] });
+      const prevOrders = queryClient.getQueriesData<Paged<Order>>({ queryKey: ["orders"] });
+      queryClient.setQueriesData<Paged<Order>>({ queryKey: ["orders"] }, (old: Paged<Order> | undefined) => {
+        if (!old) return old;
+        return {
+          ...old,
+          items: old.items.map((o: Order) => (o.id === id ? { ...o, status: status as any } : o)),
+        };
+      });
+      return { prevOrders };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prevOrders) {
+        for (const [key, data] of ctx.prevOrders) {
+          queryClient.setQueryData(key, data);
+        }
+      }
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["orders"] });
+      await revalidateAll();
+    },
   });
 
-  const reviewPaymentMutation = useMutation({
+  const reviewPaymentMutation = useMutation<
+    Order,
+    Error,
+    { id: string; status: "approved" | "rejected"; note: string },
+    { prevOrders: [QueryKey, Paged<Order> | undefined][] }
+  >({
     mutationFn: ({ id, status, note }: { id: string; status: "approved" | "rejected"; note: string }) =>
       orderRepo.reviewPayment(id, status, note),
-    onSuccess: () => revalidateAll(),
+    onMutate: async ({ id, status }) => {
+      await queryClient.cancelQueries({ queryKey: ["orders"] });
+      const prevOrders = queryClient.getQueriesData<Paged<Order>>({ queryKey: ["orders"] });
+      queryClient.setQueriesData<Paged<Order>>({ queryKey: ["orders"] }, (old: Paged<Order> | undefined) => {
+        if (!old) return old;
+        return {
+          ...old,
+          items: old.items.map((o: Order) =>
+            o.id === id
+              ? {
+                  ...o,
+                  paymentStatus: status,
+                  status: status === "approved" ? "processing" : o.status,
+                }
+              : o
+          ),
+        };
+      });
+      return { prevOrders };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prevOrders) {
+        for (const [key, data] of ctx.prevOrders) {
+          queryClient.setQueryData(key, data);
+        }
+      }
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["orders"] });
+      await revalidateAll();
+    },
   });
 
   return {
@@ -301,14 +542,35 @@ export function useCustomers() {
   const queryClient = useQueryClient();
   const q = useCustomersQuery();
 
-  const createMutation = useMutation({
+  const createMutation = useMutation<Customer, Error, Omit<Customer, "id">>({
     mutationFn: (input: Omit<Customer, "id">) => customerRepo.create(input),
-    onSuccess: () => revalidateAll(),
+    onSuccess: async (newCustomer: Customer) => {
+      queryClient.setQueryData<Customer[]>(["customers"], (old: Customer[] = []) => {
+        const exists = old.some((c: Customer) => c.id === newCustomer.id);
+        return exists ? old.map((c: Customer) => (c.id === newCustomer.id ? newCustomer : c)) : [newCustomer, ...old];
+      });
+      await queryClient.invalidateQueries({ queryKey: ["customers"] });
+      await revalidateAll();
+    },
   });
 
-  const deleteMutation = useMutation({
+  const deleteMutation = useMutation<boolean, Error, string, { prev?: Customer[] }>({
     mutationFn: (id: string) => customerRepo.remove(id),
-    onSuccess: () => revalidateAll(),
+    onMutate: async (deletedId: string) => {
+      await queryClient.cancelQueries({ queryKey: ["customers"] });
+      const prev = queryClient.getQueryData<Customer[]>(["customers"]);
+      queryClient.setQueryData<Customer[]>(["customers"], (old: Customer[] = []) =>
+        old.filter((c: Customer) => c.id !== deletedId)
+      );
+      return { prev };
+    },
+    onError: (_err, _id, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(["customers"], ctx.prev);
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["customers"] });
+      await revalidateAll();
+    },
   });
 
   return {
@@ -338,9 +600,28 @@ export function useServices() {
   const queryClient = useQueryClient();
   const q = useServicesQuery();
 
-  const updateMutation = useMutation({
+  const updateMutation = useMutation<
+    Service,
+    Error,
+    { id: string; patch: Partial<Service> },
+    { prev?: Service[] }
+  >({
     mutationFn: ({ id, patch }: { id: string; patch: Partial<Service> }) => serviceRepo.update(id, patch),
-    onSuccess: () => revalidateAll(),
+    onMutate: async ({ id, patch }) => {
+      await queryClient.cancelQueries({ queryKey: ["services"] });
+      const prev = queryClient.getQueryData<Service[]>(["services"]);
+      queryClient.setQueryData<Service[]>(["services"], (old: Service[] = []) =>
+        old.map((s: Service) => (s.id === id ? { ...s, ...patch } : s))
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(["services"], ctx.prev);
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["services"] });
+      await revalidateAll();
+    },
   });
 
   return {
@@ -369,20 +650,60 @@ export function usePortfolio() {
   const queryClient = useQueryClient();
   const q = usePortfolioQuery();
 
-  const createMutation = useMutation({
+  const createMutation = useMutation<PortfolioProject, Error, Omit<PortfolioProject, "id">>({
     mutationFn: (input: Omit<PortfolioProject, "id">) => portfolioRepo.create(input),
-    onSuccess: () => revalidateAll(),
+    onSuccess: async (newProj: PortfolioProject) => {
+      queryClient.setQueryData<PortfolioProject[]>(["portfolio"], (old: PortfolioProject[] = []) => {
+        const exists = old.some((p: PortfolioProject) => p.id === newProj.id);
+        return exists ? old.map((p: PortfolioProject) => (p.id === newProj.id ? newProj : p)) : [newProj, ...old];
+      });
+      await queryClient.invalidateQueries({ queryKey: ["portfolio"] });
+      await revalidateAll();
+    },
   });
 
-  const updateMutation = useMutation({
+  const updateMutation = useMutation<
+    PortfolioProject,
+    Error,
+    { id: string; patch: Partial<PortfolioProject> },
+    { prev?: PortfolioProject[] }
+  >({
     mutationFn: ({ id, patch }: { id: string; patch: Partial<PortfolioProject> }) =>
       portfolioRepo.update(id, patch),
-    onSuccess: () => revalidateAll(),
+    onMutate: async ({ id, patch }) => {
+      await queryClient.cancelQueries({ queryKey: ["portfolio"] });
+      const prev = queryClient.getQueryData<PortfolioProject[]>(["portfolio"]);
+      queryClient.setQueryData<PortfolioProject[]>(["portfolio"], (old: PortfolioProject[] = []) =>
+        old.map((p: PortfolioProject) => (p.id === id ? { ...p, ...patch } : p))
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(["portfolio"], ctx.prev);
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["portfolio"] });
+      await revalidateAll();
+    },
   });
 
-  const deleteMutation = useMutation({
+  const deleteMutation = useMutation<boolean, Error, string, { prev?: PortfolioProject[] }>({
     mutationFn: (id: string) => portfolioRepo.remove(id),
-    onSuccess: () => revalidateAll(),
+    onMutate: async (deletedId: string) => {
+      await queryClient.cancelQueries({ queryKey: ["portfolio"] });
+      const prev = queryClient.getQueryData<PortfolioProject[]>(["portfolio"]);
+      queryClient.setQueryData<PortfolioProject[]>(["portfolio"], (old: PortfolioProject[] = []) =>
+        old.filter((p: PortfolioProject) => p.id !== deletedId)
+      );
+      return { prev };
+    },
+    onError: (_err, _id, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(["portfolio"], ctx.prev);
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["portfolio"] });
+      await revalidateAll();
+    },
   });
 
   return {
@@ -432,20 +753,60 @@ export function useTestimonials() {
   const queryClient = useQueryClient();
   const q = useTestimonialsQuery();
 
-  const createMutation = useMutation({
+  const createMutation = useMutation<Testimonial, Error, Omit<Testimonial, "id">>({
     mutationFn: (input: Omit<Testimonial, "id">) => testimonialRepo.create(input),
-    onSuccess: () => revalidateAll(),
+    onSuccess: async (newTestimonial: Testimonial) => {
+      queryClient.setQueryData<Testimonial[]>(["testimonials"], (old: Testimonial[] = []) => {
+        const exists = old.some((t: Testimonial) => t.id === newTestimonial.id);
+        return exists ? old.map((t: Testimonial) => (t.id === newTestimonial.id ? newTestimonial : t)) : [newTestimonial, ...old];
+      });
+      await queryClient.invalidateQueries({ queryKey: ["testimonials"] });
+      await revalidateAll();
+    },
   });
 
-  const updateMutation = useMutation({
+  const updateMutation = useMutation<
+    Testimonial,
+    Error,
+    { id: string; patch: Partial<Testimonial> },
+    { prev?: Testimonial[] }
+  >({
     mutationFn: ({ id, patch }: { id: string; patch: Partial<Testimonial> }) =>
       testimonialRepo.update(id, patch),
-    onSuccess: () => revalidateAll(),
+    onMutate: async ({ id, patch }) => {
+      await queryClient.cancelQueries({ queryKey: ["testimonials"] });
+      const prev = queryClient.getQueryData<Testimonial[]>(["testimonials"]);
+      queryClient.setQueryData<Testimonial[]>(["testimonials"], (old: Testimonial[] = []) =>
+        old.map((t: Testimonial) => (t.id === id ? { ...t, ...patch } : t))
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(["testimonials"], ctx.prev);
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["testimonials"] });
+      await revalidateAll();
+    },
   });
 
-  const deleteMutation = useMutation({
+  const deleteMutation = useMutation<boolean, Error, string, { prev?: Testimonial[] }>({
     mutationFn: (id: string) => testimonialRepo.remove(id),
-    onSuccess: () => revalidateAll(),
+    onMutate: async (deletedId: string) => {
+      await queryClient.cancelQueries({ queryKey: ["testimonials"] });
+      const prev = queryClient.getQueryData<Testimonial[]>(["testimonials"]);
+      queryClient.setQueryData<Testimonial[]>(["testimonials"], (old: Testimonial[] = []) =>
+        old.filter((t: Testimonial) => t.id !== deletedId)
+      );
+      return { prev };
+    },
+    onError: (_err, _id, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(["testimonials"], ctx.prev);
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["testimonials"] });
+      await revalidateAll();
+    },
   });
 
   return {
@@ -476,20 +837,60 @@ export function usePromotions() {
   const queryClient = useQueryClient();
   const q = usePromotionsQuery();
 
-  const createMutation = useMutation({
+  const createMutation = useMutation<Promotion, Error, Omit<Promotion, "id">>({
     mutationFn: (input: Omit<Promotion, "id">) => promotionRepo.create(input),
-    onSuccess: () => revalidateAll(),
+    onSuccess: async (newPromo: Promotion) => {
+      queryClient.setQueryData<Promotion[]>(["promotions"], (old: Promotion[] = []) => {
+        const exists = old.some((p: Promotion) => p.id === newPromo.id);
+        return exists ? old.map((p: Promotion) => (p.id === newPromo.id ? newPromo : p)) : [newPromo, ...old];
+      });
+      await queryClient.invalidateQueries({ queryKey: ["promotions"] });
+      await revalidateAll();
+    },
   });
 
-  const updateMutation = useMutation({
+  const updateMutation = useMutation<
+    Promotion,
+    Error,
+    { id: string; patch: Partial<Promotion> },
+    { prev?: Promotion[] }
+  >({
     mutationFn: ({ id, patch }: { id: string; patch: Partial<Promotion> }) =>
       promotionRepo.update(id, patch),
-    onSuccess: () => revalidateAll(),
+    onMutate: async ({ id, patch }) => {
+      await queryClient.cancelQueries({ queryKey: ["promotions"] });
+      const prev = queryClient.getQueryData<Promotion[]>(["promotions"]);
+      queryClient.setQueryData<Promotion[]>(["promotions"], (old: Promotion[] = []) =>
+        old.map((p: Promotion) => (p.id === id ? { ...p, ...patch } : p))
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(["promotions"], ctx.prev);
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["promotions"] });
+      await revalidateAll();
+    },
   });
 
-  const deleteMutation = useMutation({
+  const deleteMutation = useMutation<boolean, Error, string, { prev?: Promotion[] }>({
     mutationFn: (id: string) => promotionRepo.remove(id),
-    onSuccess: () => revalidateAll(),
+    onMutate: async (deletedId: string) => {
+      await queryClient.cancelQueries({ queryKey: ["promotions"] });
+      const prev = queryClient.getQueryData<Promotion[]>(["promotions"]);
+      queryClient.setQueryData<Promotion[]>(["promotions"], (old: Promotion[] = []) =>
+        old.filter((p: Promotion) => p.id !== deletedId)
+      );
+      return { prev };
+    },
+    onError: (_err, _id, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(["promotions"], ctx.prev);
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["promotions"] });
+      await revalidateAll();
+    },
   });
 
   return {
@@ -520,9 +921,23 @@ export function useContent() {
   const queryClient = useQueryClient();
   const q = useContentQuery();
 
-  const updateMutation = useMutation({
+  const updateMutation = useMutation<SiteContent, Error, Partial<SiteContent>, { prev?: SiteContent }>({
     mutationFn: (patch: Partial<SiteContent>) => contentRepo.update(patch),
-    onSuccess: () => revalidateAll(),
+    onMutate: async (patch: Partial<SiteContent>) => {
+      await queryClient.cancelQueries({ queryKey: ["content"] });
+      const prev = queryClient.getQueryData<SiteContent>(["content"]);
+      if (prev) {
+        queryClient.setQueryData<SiteContent>(["content"], { ...prev, ...patch });
+      }
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(["content"], ctx.prev);
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["content"] });
+      await revalidateAll();
+    },
   });
 
   return {
@@ -548,9 +963,28 @@ export function useEngagement() {
   const queryClient = useQueryClient();
   const q = useEngagementQuery();
 
-  const updateMutation = useMutation({
+  const updateMutation = useMutation<
+    EngagementContent,
+    Error,
+    Partial<EngagementContent>,
+    { prev?: EngagementContent }
+  >({
     mutationFn: (patch: Partial<EngagementContent>) => engagementRepo.update(patch),
-    onSuccess: () => revalidateAll(),
+    onMutate: async (patch: Partial<EngagementContent>) => {
+      await queryClient.cancelQueries({ queryKey: ["engagement"] });
+      const prev = queryClient.getQueryData<EngagementContent>(["engagement"]);
+      if (prev) {
+        queryClient.setQueryData<EngagementContent>(["engagement"], { ...prev, ...patch });
+      }
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(["engagement"], ctx.prev);
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["engagement"] });
+      await revalidateAll();
+    },
   });
 
   return {

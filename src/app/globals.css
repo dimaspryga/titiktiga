@@ -63,6 +63,7 @@
   html {
     scroll-behavior: smooth;
     scrollbar-gutter: stable;
+    overflow-y: scroll;
   }
   body {
     @apply bg-background text-foreground antialiased;
@@ -144,4 +145,13 @@
     transform: translateY(calc(-100% - var(--gap)));
     }
   }
+}
+
+/* Cegah layout shift / pergeseran layar saat Radix UI (Select, Sheet, Dialog) mengunci scroll */
+html body[data-scroll-locked],
+html[style] body[data-scroll-locked] {
+  overflow: visible !important;
+  margin-right: 0px !important;
+  margin-left: 0px !important;
+  padding-right: 0px !important;
 }

@@ -20,7 +20,7 @@ import type { Promotion } from "@/lib/types";
 
 export default function AdminPromotionsPage() {
   const { t, tt } = useI18n();
-  const { data: promotions } = usePromotions();
+  const { promotions, createPromotion, updatePromotion, deletePromotion } = usePromotions();
   const [editing, setEditing] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -55,23 +55,20 @@ export default function AdminPromotionsPage() {
       code: values.code ? values.code.toUpperCase() : null,
       active: values.active,
     };
-    if (editing) await promotionRepo.update(editing, payload);
-    else await promotionRepo.create(payload);
-    revalidateAll();
+    if (editing) await updatePromotion(editing, payload);
+    else await createPromotion(payload);
     toast.success(t("admin.saved"));
     setSubmitting(false);
     setOpen(false);
   };
 
   const handleDelete = async (id: string) => {
-    await promotionRepo.remove(id);
-    revalidateAll();
+    await deletePromotion(id);
     toast.success(t("admin.deleted"));
   };
 
   const toggleActive = async (promo: Promotion) => {
-    await promotionRepo.update(promo.id, { active: !promo.active });
-    revalidateAll();
+    await updatePromotion(promo.id, { active: !promo.active });
   };
 
   return (

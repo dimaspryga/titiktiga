@@ -18,7 +18,7 @@ import { categorySchema, type CategoryFormValues } from "@/lib/validation/schema
 
 export default function AdminCategoriesPage() {
   const { t, tt } = useI18n();
-  const { data: categories } = useCategories();
+  const { categories, createCategory, updateCategory, deleteCategory } = useCategories();
   const [editing, setEditing] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -55,17 +55,15 @@ export default function AdminCategoriesPage() {
       description: values.description,
       order: Number(values.order),
     };
-    if (editing) await categoryRepo.update(editing, payload);
-    else await categoryRepo.create({ ...payload, image: "https://images.unsplash.com/photo-1620275765334-4ed948bb4502?q=80&w=1200&auto=format&fit=crop" });
-    revalidateAll();
+    if (editing) await updateCategory(editing, payload);
+    else await createCategory({ ...payload, image: "https://images.unsplash.com/photo-1620275765334-4ed948bb4502?q=80&w=1200&auto=format&fit=crop" });
     toast.success(t("admin.saved"));
     setSubmitting(false);
     setOpen(false);
   };
 
   const handleDelete = async (id: string) => {
-    await categoryRepo.remove(id);
-    revalidateAll();
+    await deleteCategory(id);
     toast.success(t("admin.deleted"));
   };
 

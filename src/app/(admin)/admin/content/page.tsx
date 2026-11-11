@@ -374,7 +374,7 @@ function FeaturedTab({ content }: { content: SiteContent }) {
 
 function TestimonialsTab() {
   const { t, tt } = useI18n();
-  const { data: testimonials } = useTestimonials();
+  const { testimonials, createTestimonial, updateTestimonial, deleteTestimonial } = useTestimonials();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState({ quote: { id: "", en: "" }, name: "", role: { id: "", en: "" }, avatar: "" });
@@ -388,9 +388,8 @@ function TestimonialsTab() {
 
   const save = async () => {
     setSaving(true);
-    if (editing) await testimonialRepo.update(editing, draft);
-    else await testimonialRepo.create(draft);
-    revalidateAll();
+    if (editing) await updateTestimonial(editing, draft);
+    else await createTestimonial(draft);
     toast.success(t("admin.saved"));
     setSaving(false);
     setOpen(false);
@@ -424,7 +423,7 @@ function TestimonialsTab() {
             >
               <Pencil className="h-3.5 w-3.5" />
             </Button>
-            <ConfirmDelete onConfirm={async () => { await testimonialRepo.remove(tst.id); revalidateAll(); }} testId={`admin-testimonial-delete-${tst.id}`}>
+            <ConfirmDelete onConfirm={async () => { await deleteTestimonial(tst.id); toast.success(t("admin.deleted")); }} testId={`admin-testimonial-delete-${tst.id}`}>
               <Button variant="outline" size="sm" className="rounded-none text-destructive" data-testid={`admin-testimonial-delete-button-${tst.id}`}>
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
@@ -460,7 +459,7 @@ function TestimonialsTab() {
 
 function ServicesTab() {
   const { t, tt } = useI18n();
-  const { data: services } = useServices();
+  const { services, updateService } = useServices();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState({
@@ -483,8 +482,7 @@ function ServicesTab() {
       priceFrom: Number(draft.priceFrom) || 0,
       image: draft.image,
     };
-    if (editing) await serviceRepo.update(editing, payload);
-    revalidateAll();
+    if (editing) await updateService(editing, payload);
     toast.success(t("admin.saved"));
     setSaving(false);
     setOpen(false);
@@ -550,7 +548,7 @@ function ServicesTab() {
 
 function PortfolioTab() {
   const { t, tt } = useI18n();
-  const { data: projects } = usePortfolio();
+  const { projects, updateProject } = usePortfolio();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState({
@@ -565,8 +563,7 @@ function PortfolioTab() {
 
   const save = async () => {
     setSaving(true);
-    if (editing) await portfolioRepo.update(editing, draft);
-    revalidateAll();
+    if (editing) await updateProject(editing, draft);
     toast.success(t("admin.saved"));
     setSaving(false);
     setOpen(false);

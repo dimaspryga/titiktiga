@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FilterX, Search } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
@@ -45,7 +45,7 @@ function Catalog() {
   const searchParams = useSearchParams();
   const { data: categories } = useCategories();
 
-  const get = (key: string) => searchParams.get(key) ?? undefined;
+  const get = useCallback((key: string) => searchParams.get(key) ?? undefined, [searchParams]);
   const query = useMemo(
     () => ({
       q: get("q"),
@@ -58,7 +58,7 @@ function Catalog() {
       page: Number(get("page") ?? "1"),
       perPage: PER_PAGE,
     }),
-    [searchParams]
+    [get]
   );
 
   const { data, error, isLoading } = useProducts(query);

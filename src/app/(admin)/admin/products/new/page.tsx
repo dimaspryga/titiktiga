@@ -6,8 +6,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import { ProductForm } from "@/components/admin/product-form";
-import { productRepo } from "@/lib/repositories";
-import { revalidateAll } from "@/lib/hooks";
+import { useProducts } from "@/lib/hooks";
 import { useI18n } from "@/lib/i18n";
 import type { ProductInput } from "@/lib/types";
 
@@ -15,12 +14,12 @@ export default function NewProductPage() {
   const { t } = useI18n();
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
+  const { createProduct } = useProducts();
 
   const handle = async (values: ProductInput) => {
     setSubmitting(true);
     try {
-      const product = await productRepo.create(values);
-      revalidateAll();
+      const product = await createProduct(values);
       toast.success("Produk berhasil ditambahkan", {
         description: product.name,
       });

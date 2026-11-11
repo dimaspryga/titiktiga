@@ -24,7 +24,7 @@ type CustomerFormValues = z.input<typeof customerFormSchema>;
 
 export default function AdminCustomersPage() {
   const { t } = useI18n();
-  const { data: customers } = useCustomers();
+  const { customers, createCustomer, deleteCustomer } = useCustomers();
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -35,7 +35,7 @@ export default function AdminCustomersPage() {
 
   const submit = async (values: CustomerFormValues) => {
     setSubmitting(true);
-    await customerRepo.create({
+    await createCustomer({
       name: values.name,
       email: values.email,
       phone: values.phone,
@@ -43,7 +43,6 @@ export default function AdminCustomersPage() {
       ordersCount: 0,
       totalSpent: 0,
     });
-    revalidateAll();
     toast.success(t("admin.saved"));
     setSubmitting(false);
     setOpen(false);
@@ -51,8 +50,7 @@ export default function AdminCustomersPage() {
   };
 
   const handleDelete = async (id: string) => {
-    await customerRepo.remove(id);
-    revalidateAll();
+    await deleteCustomer(id);
     toast.success(t("admin.deleted"));
   };
 

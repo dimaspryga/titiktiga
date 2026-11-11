@@ -19,11 +19,10 @@ export default function AdminProductsPage() {
   const { t } = useI18n();
   const router = useRouter();
   const [search, setSearch] = useState("");
-  const { data, isLoading } = useProducts({ includeDrafts: true, q: search || undefined, perPage: 100 });
+  const { data, items, isLoading, deleteProduct } = useProducts({ includeDrafts: true, q: search || undefined, perPage: 100 });
 
   const handleDelete = async (id: string) => {
-    await productRepo.remove(id);
-    revalidateAll();
+    await deleteProduct(id);
     toast.success(t("admin.deleted"));
   };
 

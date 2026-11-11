@@ -9,7 +9,7 @@ import { useEngagement } from "@/lib/hooks";
 import { engagementRepo } from "@/lib/repositories";
 
 export function EngagementAdminTab() {
-  const { data, mutate } = useEngagement();
+  const { engagement: data, updateEngagement } = useEngagement();
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -21,8 +21,7 @@ export function EngagementAdminTab() {
     setSaving(true);
     try {
       const parsed = JSON.parse(draft);
-      const updated = await engagementRepo.update(parsed);
-      await mutate(updated, false);
+      await updateEngagement(parsed);
       toast.success("Konten pricing dan layanan berhasil disimpan");
     } catch {
       toast.error("Format JSON tidak valid");
