@@ -27,15 +27,16 @@ export default function ProductDetailPage() {
   const [imageIndex, setImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [viewerOpen, setViewerOpen] = useState(false);
+  const galleryMedia = product ? [...(product.detailCover ? [product.detailCover] : []), ...product.images] : [];
 
   const showPreviousImage = () => {
-    if (!product?.images.length) return;
-    setImageIndex((current) => (current - 1 + product.images.length) % product.images.length);
+    if (!galleryMedia.length) return;
+    setImageIndex((current) => (current - 1 + galleryMedia.length) % galleryMedia.length);
   };
 
   const showNextImage = () => {
-    if (!product?.images.length) return;
-    setImageIndex((current) => (current + 1) % product.images.length);
+    if (!galleryMedia.length) return;
+    setImageIndex((current) => (current + 1) % galleryMedia.length);
   };
 
   if (isLoading) {
@@ -87,7 +88,7 @@ export default function ProductDetailPage() {
         <div>
           <div className="texture-grain relative aspect-square overflow-hidden bg-muted" data-testid="product-gallery-main">
             <ProductMedia
-              src={product.images[imageIndex] ?? product.images[0]}
+              src={galleryMedia[imageIndex] ?? product.images[0]}
               alt={`${product.name} — ${imageIndex + 1}`}
               fill
               priority
@@ -108,14 +109,14 @@ export default function ProductDetailPage() {
                 <DialogTitle className="sr-only">{product.name}</DialogTitle>
                 <div className="relative h-[85vh] w-full">
                   <ProductMedia
-                    src={product.images[imageIndex] ?? product.images[0]}
+                    src={galleryMedia[imageIndex] ?? product.images[0]}
                     alt={product.name}
                     fill
                     sizes="95vw"
                     controls
                     className="object-contain"
                   />
-                  {product.images.length > 1 && (
+                  {galleryMedia.length > 1 && (
                     <>
                       <button
                         type="button"
@@ -134,7 +135,7 @@ export default function ProductDetailPage() {
                         <ChevronRight className="h-6 w-6" />
                       </button>
                       <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-background/90 px-3 py-1 text-xs font-medium backdrop-blur">
-                        {imageIndex + 1} / {product.images.length}
+                        {imageIndex + 1} / {galleryMedia.length}
                       </div>
                     </>
                   )}
@@ -147,14 +148,14 @@ export default function ProductDetailPage() {
               </span>
             )}
           </div>
-          {product.images.length > 1 && (
+          {galleryMedia.length > 1 && (
             <div className="mt-4 grid grid-cols-4 gap-3" data-testid="product-gallery-thumbs">
-              {product.images.map((img, i) => (
+              {galleryMedia.map((img, i) => (
                 <button
                   key={i}
                   type="button"
                   data-testid={`product-gallery-thumb-${i}`}
-                  aria-label={`${product.name} — gambar ${i + 1}`}
+                  aria-label={`${product.name} — media ${i + 1}`}
                   onClick={() => setImageIndex(i)}
                   className={cn(
                     "relative aspect-square overflow-hidden border-2 transition-colors",

@@ -25,6 +25,7 @@ function mapProduct(p: any) {
     price: Number(p.price),
     discountPercent: p.discount_percent,
     rating: p.rating == null ? null : Number(p.rating),
+    detailCover: p.detail_cover ?? null,
     images: sortedImages.map((x: any) => x.url),
     shortDescription: parseJson(p.short_description),
     description: parseJson(p.description),
@@ -64,6 +65,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (input.price !== undefined) updates.price = input.price;
   if (input.discountPercent !== undefined) updates.discount_percent = input.discountPercent;
   if (input.rating !== undefined) updates.rating = input.rating;
+  if (input.detailCover !== undefined) updates.detail_cover = input.detailCover || null;
   if (input.stock !== undefined) updates.stock = input.stock;
   if (input.featured !== undefined) updates.featured = Boolean(input.featured);
   if (input.status !== undefined) updates.status = input.status;

@@ -18,6 +18,8 @@ Frontend Next.js terhubung ke REST API lokal yang didukung oleh database Supabas
 5. Checkout transfer bank menerima screenshot bukti transfer (JPG/PNG/WebP, maks. 5 MB). File disimpan di bucket `payment-proofs` Supabase Storage dan catatannya disimpan di database untuk ditinjau admin. Pastikan `SUPABASE_SERVICE_ROLE_KEY` tersedia di server, lalu jalankan skema database terbaru agar bucket dibuat.
 6. Atur kredensial SMTP dan `APP_URL` di `.env.local` untuk email verifikasi akun dan reset kata sandi. Tautan reset kata sandi berlaku selama 1 jam.
 7. Media produk mendukung gambar JPG/PNG/WebP (maks. 5 MB) dan video MP4/WebM/MOV/OGG (maks. 30 MB). Jalankan skema database terkini agar tabel `password_reset_tokens` tersedia.
+8. Jalankan skema database terkini setelah pembaruan order agar harga asli dan diskon tiap item tersimpan; pesanan lama hanya memiliki total diskon dan tidak dapat menampilkan harga asli per item secara akurat.
+9. Jalankan skema database terkini setelah pembaruan katalog agar kolom `products.detail_cover` tersedia untuk sampul khusus halaman detail. Media konten pertama tetap dipakai pada kartu/katalog.
 
 ## Menjalankan Aplikasi
 

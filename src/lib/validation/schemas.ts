@@ -69,6 +69,7 @@ export const productSchema = z.object({
   discountPercent: z.coerce.number().min(0).max(90, "Maksimal 90%").nullable().optional(),
   rating: z.coerce.number().min(0).max(5).nullable().optional(),
   stock: z.coerce.number().int().min(0, "Stok tidak valid"),
+  detailCover: z.string().optional().nullable(),
   images: z.array(z.string().min(4)).min(1, "Minimal 1 gambar"),
   shortDescription: z.object({
     id: z.string().min(5, "Minimal 5 karakter"),

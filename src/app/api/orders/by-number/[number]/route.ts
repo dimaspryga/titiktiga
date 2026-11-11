@@ -34,6 +34,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ number: st
       image: x.image_url ?? "",
       quantity: Number(x.quantity),
       unitPrice: Number(x.unit_price),
+      originalUnitPrice: x.original_unit_price == null ? Number(x.unit_price) : Number(x.original_unit_price),
+      discountPercent: x.discount_percent == null ? null : Number(x.discount_percent),
       subtotal: Number(x.subtotal),
     })),
     subtotal: Number(o.subtotal),

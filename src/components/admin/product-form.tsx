@@ -41,6 +41,7 @@ export function ProductForm({
           price: initial.price,
           discountPercent: initial.discountPercent,
           stock: initial.stock,
+          detailCover: initial.detailCover ?? "",
           images: initial.images,
           shortDescription: initial.shortDescription,
           description: initial.description,
@@ -56,6 +57,7 @@ export function ProductForm({
           price: undefined as unknown as number,
           discountPercent: null,
           stock: 10,
+          detailCover: "",
           images: [],
           shortDescription: { id: "", en: "" },
           description: { id: "", en: "" },
@@ -84,6 +86,7 @@ export function ProductForm({
       price: Number(values.price),
       discountPercent: values.discountPercent ?? null,
       stock: Number(values.stock),
+      detailCover: values.detailCover?.trim() || null,
       images: values.images,
       shortDescription: values.shortDescription,
       description: values.description,
@@ -196,7 +199,26 @@ export function ProductForm({
 
         <div className="space-y-8">
           <div className="space-y-3">
-            <Label>Gambar</Label>
+            <div>
+              <Label>Sampul halaman detail</Label>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Khusus untuk media utama di halaman detail produk. Kartu produk tetap memakai media konten pertama.
+              </p>
+            </div>
+            <ImageUpload
+              value={form.watch("detailCover") ? [form.watch("detailCover") as string] : []}
+              onChange={(media) => form.setValue("detailCover", media[0] ?? "", { shouldDirty: true, shouldValidate: true })}
+              max={1}
+            />
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <Label>Media konten produk</Label>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Media pertama digunakan sebagai gambar kartu/katalog; semua media tampil di galeri detail.
+              </p>
+            </div>
             <ImageUpload value={form.watch("images") ?? []} onChange={(images) => form.setValue("images", images, { shouldValidate: true })} />
             {err(form.formState.errors.images?.message as string)}
           </div>

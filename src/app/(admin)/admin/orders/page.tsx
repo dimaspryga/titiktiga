@@ -351,20 +351,31 @@ function OrderDetail({
       </div>
 
       <ul className="divide-y divide-border border-y border-border">
-        {order.items.map((item) => (
-          <li key={item.productId} className="flex justify-between gap-4 py-2" data-testid={`admin-order-item-${item.slug}`}>
-            <span>
-              {item.name} × {item.quantity}
-            </span>
-            <span>{formatIDR(item.subtotal)}</span>
-          </li>
-        ))}
+        {order.items.map((item, index) => {
+          const originalPrice = item.originalUnitPrice ?? item.unitPrice;
+          const hasItemDiscount = originalPrice > item.unitPrice;
+          return (
+            <li key={`${item.productId}-${index}`} className="flex flex-wrap justify-between gap-4 py-3" data-testid={`admin-order-item-${item.slug}`}>
+              <span>
+                <span className="block">{item.name} × {item.quantity}</span>
+                <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  {hasItemDiscount && <span className="line-through">{formatIDR(originalPrice)}</span>}
+                  <span>{formatIDR(item.unitPrice)} / item</span>
+                  {hasItemDiscount && item.discountPercent != null && item.discountPercent > 0 && (
+                    <span className="bg-lime/20 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-foreground">-{item.discountPercent}%</span>
+                  )}
+                </span>
+              </span>
+              <span className="font-medium">{formatIDR(item.subtotal)}</span>
+            </li>
+          );
+        })}
       </ul>
 
       <div className="space-y-1">
         <div className="flex justify-between">
-          <span className="text-muted-foreground">{t("cart.subtotal")}</span>
-          <span>{formatIDR(order.subtotal)}</span>
+          <span className="text-muted-foreground">{t("orders.subtotalBeforeDiscount")}</span>
+          <span>{formatIDR(order.subtotal + order.productDiscount)}</span>
         </div>
         {order.productDiscount > 0 && (
           <div className="flex justify-between">
@@ -372,12 +383,22 @@ function OrderDetail({
             <span>−{formatIDR(order.productDiscount)}</span>
           </div>
         )}
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">{t("orders.subtotalAfterDiscount")}</span>
+          <span>{formatIDR(order.subtotal)}</span>
+        </div>
         {order.voucherDiscount > 0 && (
           <div className="flex justify-between">
             <span className="text-muted-foreground">
               {t("cart.voucher")} {order.voucherCode}
             </span>
             <span>−{formatIDR(order.voucherDiscount)}</span>
+          </div>
+        )}
+        {order.shippingFee > 0 && (
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">{t("cart.shipping")}</span>
+            <span>{formatIDR(order.shippingFee)}</span>
           </div>
         )}
         <div className="flex justify-between pt-2 text-base font-semibold">

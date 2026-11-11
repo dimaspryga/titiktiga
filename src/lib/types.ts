@@ -23,6 +23,7 @@ export interface Product {
   category: string;
   price: number;
   discountPercent: number | null;
+  detailCover?: string | null;
   images: string[];
   shortDescription: LocalizedText;
   description: LocalizedText;
@@ -83,6 +84,8 @@ export interface OrderItem {
   image: string;
   quantity: number;
   unitPrice: number;
+  originalUnitPrice?: number;
+  discountPercent?: number | null;
   subtotal: number;
 }
 

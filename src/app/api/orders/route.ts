@@ -1,15 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import supabase from "@/lib/supabase";
 
-async function fullOrder(id: string) {
-  const { data: o, error } = await supabase
-    .from("orders")
-    .select("*, order_items(*), payment_proofs(file_path, submitted_at)")
-    .eq("id", id)
-    .single();
-
-  if (error || !o) return null;
-
+function mapOrder(o: any) {
   const sortedProofs = (o.payment_proofs ?? []).sort(
     (a: any, b: any) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime()
   );
@@ -29,6 +21,8 @@ async function fullOrder(id: string) {
       image: i.image_url ?? "",
       quantity: Number(i.quantity),
       unitPrice: Number(i.unit_price),
+      originalUnitPrice: i.original_unit_price == null ? Number(i.unit_price) : Number(i.original_unit_price),
+      discountPercent: i.discount_percent == null ? null : Number(i.discount_percent),
       subtotal: Number(i.subtotal),
     })),
     subtotal: Number(o.subtotal),
@@ -47,21 +41,34 @@ async function fullOrder(id: string) {
   };
 }
 
+async function fullOrder(id: string) {
+  const { data: order, error } = await supabase
+    .from("orders")
+    .select("*, order_items(*), payment_proofs(file_path, submitted_at)")
+    .eq("id", id)
+    .single();
+
+  if (error || !order) return null;
+  return mapOrder(order);
+}
+
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams;
-  const page = Math.max(1, Number(q.get("page") ?? 1));
-  const perPage = Math.max(1, Number(q.get("perPage") ?? 6));
+  const requestedPage = Number(q.get("page") ?? 1);
+  const requestedPerPage = Number(q.get("perPage") ?? 6);
+  const page = Number.isFinite(requestedPage) ? Math.max(1, Math.floor(requestedPage)) : 1;
+  const perPage = Number.isFinite(requestedPerPage) ? Math.min(50, Math.max(1, Math.floor(requestedPerPage))) : 6;
 
   let query = supabase
     .from("orders")
-    .select("id", { count: "exact" });
+    .select("*, order_items(*), payment_proofs(file_path, submitted_at)", { count: "exact" });
 
   const status = q.get("status");
   if (status && status !== "all") {
     query = query.eq("status", status);
   }
 
-  const search = q.get("q");
+  const search = q.get("q")?.trim();
   if (search) {
     query = query.or(
       `number.ilike.%${search}%,customer_name.ilike.%${search}%,customer_email.ilike.%${search}%`
@@ -82,12 +89,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const items: any[] = [];
-  for (const r of rows ?? []) {
-    const order = await fullOrder(r.id);
-    if (order) items.push(order);
-  }
-
+  const items = (rows ?? []).map(mapOrder);
   const total = count ?? 0;
   return NextResponse.json({
     items,
@@ -139,9 +141,15 @@ export async function POST(req: NextRequest) {
       image_url: item.image ?? "",
       quantity: item.quantity,
       unit_price: item.unitPrice,
+      original_unit_price: item.originalUnitPrice ?? item.unitPrice,
+      discount_percent: item.discountPercent ?? null,
       subtotal: item.subtotal,
     }));
-    await supabase.from("order_items").insert(items);
+    const { error: itemsError } = await supabase.from("order_items").insert(items);
+    if (itemsError) {
+      await supabase.from("orders").delete().eq("id", order.id);
+      return NextResponse.json({ error: itemsError.message }, { status: 500 });
+    }
   }
 
   return NextResponse.json(await fullOrder(order.id), { status: 201 });

@@ -164,6 +164,8 @@ function CheckoutContent() {
           name: i.name,
           image: i.image,
           quantity: i.quantity,
+          originalUnitPrice: i.price,
+          discountPercent: i.discountPercent,
           unitPrice: unitPrice(i.price, i.discountPercent),
           subtotal: unitPrice(i.price, i.discountPercent) * i.quantity,
         })),

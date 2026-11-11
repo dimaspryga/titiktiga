@@ -90,6 +90,7 @@ CREATE TABLE IF NOT EXISTS public.products (
   price NUMERIC(12, 2) NOT NULL,
   discount_percent INTEGER DEFAULT NULL,
   rating NUMERIC(2, 1) DEFAULT NULL,
+  detail_cover TEXT DEFAULT NULL,
   short_description JSONB NOT NULL,
   description JSONB NOT NULL,
   stock INTEGER NOT NULL DEFAULT 0,
@@ -97,6 +98,9 @@ CREATE TABLE IF NOT EXISTS public.products (
   status VARCHAR(20) DEFAULT 'draft' CHECK (status IN ('active', 'draft')),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+ALTER TABLE public.products
+  ADD COLUMN IF NOT EXISTS detail_cover TEXT DEFAULT NULL;
 
 CREATE INDEX IF NOT EXISTS products_category_slug_idx ON public.products(category_slug);
 CREATE INDEX IF NOT EXISTS products_status_idx ON public.products(status);
@@ -189,8 +193,15 @@ CREATE TABLE IF NOT EXISTS public.order_items (
   image_url VARCHAR(500) DEFAULT '',
   quantity INTEGER NOT NULL,
   unit_price NUMERIC(12, 2) NOT NULL,
+  original_unit_price NUMERIC(12, 2) DEFAULT NULL,
+  discount_percent INTEGER DEFAULT NULL,
   subtotal NUMERIC(12, 2) NOT NULL
 );
+
+ALTER TABLE public.order_items
+  ADD COLUMN IF NOT EXISTS original_unit_price NUMERIC(12, 2) DEFAULT NULL;
+ALTER TABLE public.order_items
+  ADD COLUMN IF NOT EXISTS discount_percent INTEGER DEFAULT NULL;
 
 CREATE INDEX IF NOT EXISTS order_items_order_id_idx ON public.order_items(order_id);
 CREATE INDEX IF NOT EXISTS order_items_product_id_idx ON public.order_items(product_id);
