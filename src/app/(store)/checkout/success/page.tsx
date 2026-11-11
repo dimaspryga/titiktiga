@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { orderRepo } from "@/lib/repositories";
 import { useI18n } from "@/lib/i18n";
 import { formatIDR } from "@/lib/utils";
-import useSWR from "swr";
+import { useOrderByNumber } from "@/lib/hooks";
 
 export default function CheckoutSuccessPage() {
   return (
@@ -24,7 +24,7 @@ function SuccessContent() {
   const { t } = useI18n();
   const searchParams = useSearchParams();
   const number = searchParams.get("number");
-  const { data: order, isLoading } = useSWR(number ? ["order", number] : null, () => orderRepo.getByNumber(number!));
+  const { data: order, isLoading } = useOrderByNumber(number ?? undefined);
 
   if (isLoading) return <Skeleton className="mx-auto my-24 h-96 max-w-2xl" />;
 

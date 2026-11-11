@@ -43,7 +43,7 @@ export function computeVoucherDiscount(voucher: Voucher | null | undefined, subt
   if (!voucher || !isVoucherValid(voucher)) return 0;
   let discount =
     voucher.type === "percentage" ? Math.round((subtotal * voucher.value) / 100) : Math.round(voucher.value);
-  if (voucher.type === "percentage" && voucher.maxDiscount != null) {
+  if (voucher.type === "percentage" && voucher.maxDiscount != null && voucher.maxDiscount > 0) {
     discount = Math.min(discount, voucher.maxDiscount);
   }
   return Math.max(0, Math.min(discount, subtotal));
@@ -62,16 +62,17 @@ export function computeTotals(
 ): CartTotals {
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
   const grossTotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const subtotal = computeSubtotal(items);
-  const productDiscount = grossTotal - subtotal;
-  const voucherDiscount = isVoucherApplicable(voucher, subtotal, opts.categorySlugs ?? [])
-    ? computeVoucherDiscount(voucher, subtotal)
+  const discountedSubtotal = computeSubtotal(items);
+  const actualProductDiscount = grossTotal - discountedSubtotal;
+  const subtotal = discountedSubtotal;
+  const voucherDiscount = isVoucherApplicable(voucher, discountedSubtotal, opts.categorySlugs ?? [])
+    ? computeVoucherDiscount(voucher, discountedSubtotal)
     : 0;
-  const afterDiscounts = subtotal - voucherDiscount;
-  const freeShipping = true;
-  const shippingFee = 0;
+  const afterDiscounts = discountedSubtotal - voucherDiscount;
+  const freeShipping = discountedSubtotal >= opts.freeShippingThreshold;
+  const shippingFee = freeShipping ? 0 : opts.shippingFee;
   const total = Math.max(0, afterDiscounts + shippingFee);
-  return { itemCount, subtotal, productDiscount, voucherDiscount, shippingFee, total, freeShipping };
+  return { itemCount, subtotal, productDiscount: actualProductDiscount, voucherDiscount, shippingFee, total, freeShipping };
 }
 
 export function validQuantity(quantity: number, stock: number): number {
@@ -79,4 +80,9 @@ export function validQuantity(quantity: number, stock: number): number {
   const rounded = Math.round(quantity);
   if (rounded < 1) return stock > 0 ? 1 : 0;
   return Math.min(rounded, stock, MAX_QUANTITY);
+}
+
+export function computePeriodicPrice(monthlyPrice: number, discountPercent: number | null | undefined): number {
+  if (!discountPercent || discountPercent <= 0) return monthlyPrice;
+  return Math.round(monthlyPrice * (1 - Math.min(discountPercent, 100) / 100));
 }

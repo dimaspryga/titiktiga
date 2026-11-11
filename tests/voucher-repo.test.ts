@@ -1,10 +1,42 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import apiClient from "@/lib/api/axios";
 import { voucherRepo } from "@/lib/repositories";
 import { useMockDb } from "@/lib/repositories/db";
 
 describe("voucherRepo.check", () => {
   beforeEach(() => {
     useMockDb.setState({ ...useMockDb.getState(), vouchers: useMockDb.getState().vouchers });
+
+    vi.spyOn(apiClient, "request").mockImplementation(async (config: any) => {
+      if (config.url === "/vouchers/check" && (config.method === "POST" || config.method === undefined)) {
+        const { code, subtotal, categories = [] } = config.data;
+        const v = useMockDb
+          .getState()
+          .vouchers.find((x) => x.code.toUpperCase() === code.trim().toUpperCase());
+
+        if (!v) return { data: { ok: false, error: "invalid" } } as any;
+        if (!v.active) return { data: { ok: false, error: "inactive" } } as any;
+
+        const today = new Date().toISOString().slice(0, 10);
+        if (today < v.startDate || today > v.expiryDate) {
+          return { data: { ok: false, error: "expired" } } as any;
+        }
+        if (v.usageLimit != null && v.usedCount >= v.usageLimit) {
+          return { data: { ok: false, error: "limit" } } as any;
+        }
+        if (subtotal < v.minPurchase) {
+          return { data: { ok: false, error: "min-purchase" } } as any;
+        }
+        if (v.eligibleCategories?.length) {
+          const match = categories.some((c: string) =>
+            v.eligibleCategories?.map((x: string) => x.toLowerCase()).includes(c.toLowerCase())
+          );
+          if (!match) return { data: { ok: false, error: "category" } } as any;
+        }
+        return { data: { ok: true, voucher: v } } as any;
+      }
+      return { data: null } as any;
+    });
   });
 
   it("accepts a valid active voucher", async () => {

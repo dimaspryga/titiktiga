@@ -4,11 +4,10 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
-import useSWR from "swr";
 import { ArrowLeft } from "lucide-react";
 import { ProductForm } from "@/components/admin/product-form";
 import { productRepo } from "@/lib/repositories";
-import { revalidateAll } from "@/lib/hooks";
+import { revalidateAll, useProduct } from "@/lib/hooks";
 import { useI18n } from "@/lib/i18n";
 import type { ProductInput } from "@/lib/types";
 
@@ -17,7 +16,7 @@ export default function EditProductPage() {
   const { t } = useI18n();
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
-  const { data: product, isLoading } = useSWR(params?.id ? ["product-id", params.id] : null, () => productRepo.getById(params!.id));
+  const { data: product, isLoading } = useProduct(params?.id);
 
   const handle = async (values: ProductInput) => {
     setSubmitting(true);

@@ -2,7 +2,7 @@
 
 import { animate, motion, useInView, useMotionValue, useReducedMotion, useScroll, useSpring, useTransform } from "framer-motion";
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 
 export const EASE_EDITORIAL: [number, number, number, number] = [0.83, 0, 0.17, 1];
@@ -20,12 +20,10 @@ export function Reveal({
   y?: number;
 }) {
   const reduce = useReducedMotion();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
   return (
     <motion.div
       className={className}
-      initial={mounted ? { opacity: 0, y: reduce ? 0 : y } : false}
+      initial={{ opacity: 0, y: reduce ? 0 : y }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.15 }}
       transition={{ duration: 0.7, delay, ease: EASE_SNAPPY }}
@@ -47,13 +45,11 @@ export function LineMask({
   innerClassName?: string;
 }) {
   const reduce = useReducedMotion();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
   return (
     <span className={cn("block overflow-hidden", className)}>
       <motion.span
         className={cn("block", innerClassName)}
-        initial={mounted ? { y: reduce ? "0%" : "112%" } : false}
+        initial={{ y: reduce ? "0%" : "112%" }}
         animate={{ y: "0%" }}
         transition={{ duration: 0.9, delay, ease: EASE_EDITORIAL }}
       >
@@ -74,12 +70,10 @@ const staggerItem = {
 };
 
 export function Stagger({ children, className }: { children: React.ReactNode; className?: string }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
   return (
     <motion.div
       variants={staggerContainer}
-      initial={mounted ? "hidden" : false}
+      initial="hidden"
       whileInView="show"
       viewport={{ once: true, amount: 0.15 }}
       className={className}
@@ -94,32 +88,6 @@ export function StaggerItem({ children, className }: { children: React.ReactNode
     <motion.div variants={staggerItem} className={className}>
       {children}
     </motion.div>
-  );
-}
-
-export function Marquee({ items, className }: { items: string[]; className?: string }) {
-  if (items.length === 0) return null;
-  const row = (hidden: boolean) => (
-    <div aria-hidden={hidden || undefined} className="flex shrink-0 items-center gap-10 pr-10 md:gap-16 md:pr-16">
-      {items.map((item, i) => (
-        <span key={i} className="flex items-center gap-10 md:gap-16">
-          <span className="whitespace-nowrap font-display text-4xl font-medium italic md:text-6xl">{item}</span>
-          <span className="inline-flex items-center gap-1.5" aria-hidden="true">
-            <span className="h-2 w-2 rounded-full bg-lime" />
-            <span className="h-2 w-2 rounded-full bg-foreground/70" />
-            <span className="h-2 w-2 rounded-full bg-foreground/30" />
-          </span>
-        </span>
-      ))}
-    </div>
-  );
-  return (
-    <div className={cn("marquee-paused overflow-hidden", className)} role="marquee" aria-label={items.join(", ")}>
-      <div className="marquee-track flex w-max animate-marquee">
-        {row(false)}
-        {row(true)}
-      </div>
-    </div>
   );
 }
 
@@ -174,13 +142,11 @@ export function Magnetic({
   const x = useSpring(mx, { stiffness: 180, damping: 14, mass: 0.4 });
   const y = useSpring(my, { stiffness: 180, damping: 14, mass: 0.4 });
   const reduce = useReducedMotion();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
 
   return (
     <motion.div
       ref={ref}
-      style={mounted && !reduce ? { x, y } : undefined}
+      style={reduce ? undefined : { x, y }}
       className={cn("inline-block", className)}
       onMouseMove={(e) => {
         if (reduce || !ref.current) return;

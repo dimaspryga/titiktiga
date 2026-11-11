@@ -7,7 +7,7 @@ export default function GlobalError({ reset }: { error: Error & { digest?: strin
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-6 px-6 text-center" data-testid="error-page">
       <p className="font-display text-4xl font-medium md:text-6xl">Ada yang salah.</p>
       <p className="max-w-sm text-sm text-muted-foreground">
-        Coba lagi — jika masih gagal, reset data demo di Pengaturan Admin.
+        Coba lagi — jika masih gagal, silakan muat ulang halaman atau hubungi customer service kami.
       </p>
       <button
         type="button"

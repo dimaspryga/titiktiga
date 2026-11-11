@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Check } from "lucide-react";
+import { AboutVideo } from "@/components/about-video";
 import { CountUp, ParallaxImg, Reveal, Stagger, StaggerItem } from "@/components/motion";
 import { Button } from "@/components/ui/button";
 import { useContent } from "@/lib/hooks";
@@ -26,6 +27,18 @@ export default function AboutPage() {
           {t("about.title")}
         </h1>
       </Reveal>
+
+      {(content?.aboutPage.videoUrl || content?.aboutPage.videoPoster) && (
+        <Reveal className="mt-10 md:mt-16">
+          <section className="relative overflow-hidden bg-black aspect-video" data-testid="about-intro-video">
+            {content.aboutPage.videoUrl ? (
+              <AboutVideo src={content.aboutPage.videoUrl} poster={content.aboutPage.videoPoster} caption="Putar video studio" />
+            ) : (
+              <ParallaxImg src={content.aboutPage.videoPoster ?? ""} alt="Video intro Titiktiga" className="h-full w-full" range={5} />
+            )}
+          </section>
+        </Reveal>
+      )}
 
       <div className="mt-16 grid gap-12 md:mt-24 lg:grid-cols-12">
         <div className="lg:col-span-7">

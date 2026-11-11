@@ -1,17 +1,21 @@
 # Titiktiga — Creative Studio Profile & E-Commerce (Next.js)
 
 Company profile + storefront + admin dashboard untuk studio kreatif **Titiktiga**.
-Frontend Next.js terhubung ke REST API lokal dan database MySQL; Supabase hanya merupakan integrasi lama yang tidak dipakai repository aktif.
+Frontend Next.js terhubung ke REST API lokal yang didukung oleh database Supabase (PostgreSQL).
 
-## MySQL + REST API
+## Supabase + REST API
 
-1. Buat database dan tabel lengkap:
+1. Jalankan skema database lengkap di Supabase SQL Editor menggunakan file:
    ```bash
-   mysql -u root -p < database/mysql.sql
+   database/supabase.sql
    ```
-2. Salin `.env.example` menjadi `.env.local`, lalu isi kredensial MySQL.
-3. Jalankan aplikasi. API Next.js tersedia di `/api/*` dan data produk, pesanan, voucher, serta konten disimpan di MySQL.
-4. Checkout transfer bank menerima screenshot bukti transfer (JPG/PNG/WebP, maks. 5 MB). Admin dapat menyetujui atau menolak bukti pada halaman detail pesanan.
+2. Konfigurasikan kredensial Supabase di `.env.local` (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`).
+3. Jalankan aplikasi. API Next.js tersedia di `/api/*` dan data produk, pesanan, voucher, serta konten disimpan di Supabase.
+4. Verifikasi koneksi dan tabel Supabase:
+   ```bash
+   npm run db:init
+   ```
+5. Checkout transfer bank menerima screenshot bukti transfer (JPG/PNG/WebP, maks. 5 MB). Admin dapat menyetujui atau menolak bukti pada halaman detail pesanan.
 
 ## Menjalankan Aplikasi
 

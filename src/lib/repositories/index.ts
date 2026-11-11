@@ -1,4 +1,4 @@
-// Repository layer — REST API backed by MySQL.
+// Repository layer — REST API backed by Supabase via local Next.js API routes.
 export {
   productRepo,
   categoryRepo,
@@ -10,7 +10,11 @@ export {
   testimonialRepo,
   promotionRepo,
   contentRepo,
+  engagementRepo,
+  midtransRepo,
+  type MidtransStatus,
+  type MidtransTokenResult,
   type VoucherError,
   type VoucherCheck,
   type OrderQuery,
-} from "@/lib/repositories/mysql";
+} from "@/lib/repositories/supabase";

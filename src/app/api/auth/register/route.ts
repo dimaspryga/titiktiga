@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createHash, randomBytes, randomUUID } from "crypto";
-import pool from "@/lib/mysql";
+import { createHash, randomBytes } from "crypto";
+import supabase from "@/lib/supabase";
 import { sendVerificationEmail } from "@/lib/email";
 
 export async function POST(req: NextRequest) {
@@ -8,22 +8,63 @@ export async function POST(req: NextRequest) {
   const name = String(input.name ?? "").trim();
   const email = String(input.email ?? "").trim().toLowerCase();
   const passwordHash = String(input.passwordHash ?? "");
+
   if (!name || !/^\S+@\S+\.\S+$/.test(email) || !passwordHash.startsWith("sha256:")) {
     return NextResponse.json({ error: "auth.error.invalid" }, { status: 400 });
   }
-  const [existing] = await pool.execute("SELECT id FROM users WHERE email=? LIMIT 1", [email]);
-  if ((existing as any[]).length) return NextResponse.json({ error: "auth.error.exists" }, { status: 409 });
-  const id = randomUUID();
-  await pool.execute("INSERT INTO users(id,name,email,password_hash,role,phone,email_verified_at) VALUES (?,?,?,?,'customer','',NULL)", [id, name, email, passwordHash]);
+
+  const { data: existing } = await supabase
+    .from("users")
+    .select("id")
+    .eq("email", email)
+    .maybeSingle();
+
+  if (existing) {
+    return NextResponse.json({ error: "auth.error.exists" }, { status: 409 });
+  }
+
+  const { data: user, error: userError } = await supabase
+    .from("users")
+    .insert({
+      name,
+      email,
+      password_hash: passwordHash,
+      role: "customer",
+      phone: "",
+      email_verified_at: null,
+    })
+    .select()
+    .single();
+
+  if (userError || !user) {
+    return NextResponse.json({ error: userError?.message ?? "Gagal mendaftar akun" }, { status: 500 });
+  }
+
   const token = randomBytes(32).toString("hex");
-  await pool.execute("INSERT INTO email_verification_tokens(id,user_id,token_hash,expires_at) VALUES (?,?,?,DATE_ADD(UTC_TIMESTAMP(),INTERVAL 24 HOUR))", [randomUUID(), id, createHash("sha256").update(token).digest("hex")]);
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+
+  const { error: tokenError } = await supabase
+    .from("email_verification_tokens")
+    .insert({
+      user_id: user.id,
+      token_hash: tokenHash,
+      expires_at: expiresAt,
+    });
+
+  if (tokenError) {
+    await supabase.from("users").delete().eq("id", user.id);
+    return NextResponse.json({ error: "Gagal membuat token verifikasi" }, { status: 500 });
+  }
+
   try {
     await sendVerificationEmail(email, name, token);
   } catch (error) {
     console.error("Verification email failed", error);
-    await pool.execute("DELETE FROM email_verification_tokens WHERE user_id=?", [id]);
-    await pool.execute("DELETE FROM users WHERE id=?", [id]);
+    await supabase.from("email_verification_tokens").delete().eq("user_id", user.id);
+    await supabase.from("users").delete().eq("id", user.id);
     return NextResponse.json({ error: "auth.error.email" }, { status: 503 });
   }
+
   return NextResponse.json({ pendingVerification: true, email }, { status: 201 });
 }

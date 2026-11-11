@@ -259,3 +259,8 @@ export const seedProducts: Product[] = [
     specs: [sp("Halaman", "Pages", "40 halaman"), sp("Ukuran", "Size", "A5 landscape"), sp("Cetak", "Print", "Digital hitam-putih")],
   },
 ];
+
+export const seedProductsRated = seedProducts.map((product) => ({
+  ...product,
+  rating: product.rating ?? 4.8,
+}));

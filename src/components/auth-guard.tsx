@@ -61,17 +61,21 @@ export function RequireAuth({
     if (!hydrated) return;
     const target = sanitizeReturnPath(returnTo) || window.location.pathname;
     if (!session) {
-      toast.info(t("auth.required"), { id: "auth-required" });
+      toast.warning("Login diperlukan untuk membuka halaman ini.", {
+        description: "Anda akan diarahkan ke halaman login.",
+      });
       router.replace(loginUrl(target));
       return;
     }
     if (role && session.role !== role) {
-      toast.warning(t("auth.forbidden"), { id: "auth-forbidden" });
+      toast.error("Akses ditolak.", {
+        description: "Halaman ini hanya tersedia untuk administrator.",
+      });
       router.replace("/account");
       return;
     }
     setAllowed(true);
-  }, [hydrated, session, role, returnTo, router, t]);
+  }, [hydrated, session, role, returnTo, router]);
 
   if (!allowed) {
     return (

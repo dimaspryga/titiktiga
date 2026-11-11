@@ -32,17 +32,23 @@ function CartContent() {
   const { data: productPage } = useProducts({ perPage: 100 });
   const items = useCartStore((s) => s.items);
   const voucherCode = useCartStore((s) => s.voucherCode);
+  const appliedVoucher = useCartStore((s) => s.appliedVoucher);
   const setQuantity = useCartStore((s) => s.setQuantity);
   const remove = useCartStore((s) => s.remove);
   const setVoucher = useCartStore((s) => s.setVoucher);
+  const setAppliedVoucher = useCartStore((s) => s.setAppliedVoucher);
   const [codeInput, setCodeInput] = useState("");
 
-  const voucher = vouchers?.find((v) => v.code.toUpperCase() === (voucherCode ?? "").toUpperCase());
+  const voucher =
+    appliedVoucher?.code.toUpperCase() === (voucherCode ?? "").toUpperCase()
+      ? appliedVoucher
+      : vouchers?.find((v) => v.code.toUpperCase() === (voucherCode ?? "").toUpperCase());
   const products = productPage?.items ?? [];
   const categorySlugs = [...new Set(items.map((i) => products.find((p) => p.id === i.productId)?.category).filter(Boolean))] as string[];
   const totals = computeTotals(items, voucher, {
     shippingFee: content?.store.shippingFee ?? 25000,
     freeShippingThreshold: content?.store.freeShippingThreshold ?? 1000000,
+    categorySlugs,
   });
 
   const applyVoucher = async () => {
@@ -50,6 +56,7 @@ function CartContent() {
     const result = await voucherRepo.check(codeInput, totals.subtotal, categorySlugs);
     if (result.ok) {
       setVoucher(result.voucher.code);
+      setAppliedVoucher(result.voucher);
       toast.success(t("cart.voucherApplied", { code: result.voucher.code }));
       setCodeInput("");
     } else {
@@ -180,9 +187,18 @@ function CartContent() {
                   <dd data-testid="cart-voucher-discount">−{formatIDR(totals.voucherDiscount)}</dd>
                 </div>
               )}
+              {totals.voucherDiscount > 0 && (
+                <div className="flex justify-between rounded-none border border-lime/40 bg-lime/10 px-3 py-2 text-sm" data-testid="cart-voucher-live-saving">
+                  <span className="font-medium text-lime">Harga setelah voucher</span>
+                  <span className="font-semibold text-lime">{formatIDR(totals.total)} <span className="ml-1 text-xs">(hemat {formatIDR(totals.voucherDiscount)})</span></span>
+                </div>
+              )}
               <div className="flex justify-between border-t border-border pt-4 text-lg font-semibold">
                 <dt>{t("cart.total")}</dt>
-                <dd data-testid="cart-total">{formatIDR(totals.total)}</dd>
+                <dd className="text-right" data-testid="cart-total">
+                  {totals.voucherDiscount > 0 && <span className="mr-2 text-sm font-normal text-muted-foreground line-through">{formatIDR(totals.subtotal)}</span>}
+                  <span className="transition-colors">{formatIDR(totals.total)}</span>
+                </dd>
               </div>
             </dl>
 

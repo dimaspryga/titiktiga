@@ -1,32 +1,153 @@
 import { NextRequest, NextResponse } from "next/server";
-import { randomUUID } from "crypto";
-import pool from "@/lib/mysql";
+import supabase from "@/lib/supabase";
+
+function parseJson(value: unknown): unknown {
+  if (typeof value !== "string") return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
+function mapProduct(p: any) {
+  const sortedImages = (p.product_images ?? []).sort(
+    (a: any, b: any) => (a.position ?? 0) - (b.position ?? 0)
+  );
+  const sortedSpecs = (p.product_specs ?? []).sort(
+    (a: any, b: any) => (a.position ?? 0) - (b.position ?? 0)
+  );
+  return {
+    id: p.id,
+    slug: p.slug,
+    name: p.name,
+    category: p.category_slug ?? "",
+    price: Number(p.price),
+    discountPercent: p.discount_percent,
+    rating: p.rating == null ? null : Number(p.rating),
+    images: sortedImages.map((x: any) => x.url),
+    shortDescription: parseJson(p.short_description),
+    description: parseJson(p.description),
+    specs: sortedSpecs.map((x: any) => ({
+      label: parseJson(x.label),
+      value: x.value,
+    })),
+    stock: p.stock ?? 0,
+    featured: Boolean(p.featured),
+    status: p.status ?? "draft",
+    createdAt: p.created_at,
+  };
+}
 
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams;
-  const page = Math.max(1, Number(q.get("page") ?? 1)); const perPage = Math.max(1, Number(q.get("perPage") ?? 8));
-  const where: string[]=[]; const params: any[]=[];
-  if (q.get("includeDrafts") !== "true") { where.push("p.status='active'"); }
-  if (q.get("category")) { where.push("p.category_slug=?"); params.push(q.get("category")); }
-  if (q.get("q")) { where.push("p.name LIKE ?"); params.push(`%${q.get("q")}%`); }
-  if (q.get("inStockOnly") === "true") where.push("p.stock>0");
-  if (q.get("discountOnly") === "true") where.push("p.discount_percent>0");
-  const sqlWhere = where.length ? `WHERE ${where.join(" AND ")}` : "";
-  const [countRows] = await pool.execute(`SELECT COUNT(*) AS total FROM products p ${sqlWhere}`, params);
-  const sort = q.get("sort") === "price-asc" ? "p.price ASC" : q.get("sort") === "price-desc" ? "p.price DESC" : q.get("sort") === "name-asc" ? "p.name ASC" : "p.created_at DESC";
-  const [rows] = await pool.execute(`SELECT p.* FROM products p ${sqlWhere} ORDER BY ${sort} LIMIT ? OFFSET ?`, [...params, perPage, (page-1)*perPage]);
-  const products = await Promise.all((rows as any[]).map(async p => mapProduct(p)));
-  const total = Number((countRows as any[])[0].total);
-  return NextResponse.json({items:products,total,page,perPage,hasMore:page*perPage<total});
+  const page = Math.max(1, Number(q.get("page") ?? 1));
+  const perPage = Math.max(1, Number(q.get("perPage") ?? 8));
+
+  let query = supabase
+    .from("products")
+    .select("*, product_images(url, position), product_specs(label, value, position)", { count: "exact" });
+
+  if (q.get("includeDrafts") !== "true") {
+    query = query.eq("status", "active");
+  }
+  if (q.get("category")) {
+    query = query.eq("category_slug", q.get("category"));
+  }
+  if (q.get("q")) {
+    query = query.ilike("name", `%${q.get("q")}%`);
+  }
+  if (q.get("inStockOnly") === "true") {
+    query = query.gt("stock", 0);
+  }
+  if (q.get("discountOnly") === "true") {
+    query = query.gt("discount_percent", 0);
+  }
+
+  const sort = q.get("sort");
+  if (sort === "price-asc") {
+    query = query.order("price", { ascending: true });
+  } else if (sort === "price-desc") {
+    query = query.order("price", { ascending: false });
+  } else if (sort === "name-asc") {
+    query = query.order("name", { ascending: true });
+  } else {
+    query = query.order("created_at", { ascending: false });
+  }
+
+  const offset = (page - 1) * perPage;
+  query = query.range(offset, offset + perPage - 1);
+
+  const { data: rows, count, error } = await query;
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  const total = count ?? 0;
+  const products = (rows ?? []).map(mapProduct);
+
+  return NextResponse.json({
+    items: products,
+    total,
+    page,
+    perPage,
+    hasMore: page * perPage < total,
+  });
 }
 
 export async function POST(req: NextRequest) {
-  const input=await req.json(); const id=randomUUID();
-  await pool.execute("INSERT INTO products (id,slug,name,category_slug,price,discount_percent,short_description,description,stock,featured,status) VALUES (?,?,?,?,?,?,?,?,?,?,?)", [id,input.slug,input.name,input.category || null,input.price,input.discountPercent ?? null,JSON.stringify(input.shortDescription),JSON.stringify(input.description),input.stock,input.featured,input.status]);
-  await saveImages(id,input.images ?? []); await saveSpecs(id,input.specs ?? []);
-  return NextResponse.json(await mapProduct((await pool.execute("SELECT * FROM products WHERE id=?",[id]))[0][0]),{status:201});
-}
+  const input = await req.json();
 
-async function mapProduct(p:any) { const [images]=await pool.execute("SELECT url FROM product_images WHERE product_id=? ORDER BY position",[p.id]); const [specs]=await pool.execute("SELECT label,value FROM product_specs WHERE product_id=? ORDER BY position",[p.id]); return {id:p.id,slug:p.slug,name:p.name,category:p.category_slug??"",price:Number(p.price),discountPercent:p.discount_percent,images:(images as any[]).map(x=>x.url),shortDescription:p.short_description,description:p.description,specs:(specs as any[]).map(x=>({label:x.label,value:x.value})),stock:p.stock,featured:Boolean(p.featured),status:p.status,createdAt:p.created_at}; }
-async function saveImages(id:string,images:string[]) { await pool.execute("DELETE FROM product_images WHERE product_id=?",[id]); for(let i=0;i<images.length;i++) await pool.execute("INSERT INTO product_images(id,product_id,url,position) VALUES (?,?,?,?)",[randomUUID(),id,images[i],i]); }
-async function saveSpecs(id:string,specs:any[]) { await pool.execute("DELETE FROM product_specs WHERE product_id=?",[id]); for(let i=0;i<specs.length;i++) await pool.execute("INSERT INTO product_specs(id,product_id,label,value,position) VALUES (?,?,?,?,?)",[randomUUID(),id,JSON.stringify(specs[i].label),specs[i].value,i]); }
+  const { data: product, error } = await supabase
+    .from("products")
+    .insert({
+      slug: input.slug,
+      name: input.name,
+      category_slug: input.category || null,
+      price: input.price,
+      discount_percent: input.discountPercent ?? null,
+      rating: input.rating ?? null,
+      short_description: input.shortDescription,
+      description: input.description,
+      stock: input.stock ?? 0,
+      featured: Boolean(input.featured),
+      status: input.status ?? "draft",
+    })
+    .select()
+    .single();
+
+  if (error || !product) {
+    return NextResponse.json(
+      { error: error?.message ?? "Gagal menambahkan produk" },
+      { status: 400 }
+    );
+  }
+
+  if (Array.isArray(input.images) && input.images.length > 0) {
+    const images = input.images.map((url: string, position: number) => ({
+      product_id: product.id,
+      url,
+      position,
+    }));
+    await supabase.from("product_images").insert(images);
+  }
+
+  if (Array.isArray(input.specs) && input.specs.length > 0) {
+    const specs = input.specs.map((spec: any, position: number) => ({
+      product_id: product.id,
+      label: spec.label,
+      value: spec.value,
+      position,
+    }));
+    await supabase.from("product_specs").insert(specs);
+  }
+
+  const { data: fullProduct } = await supabase
+    .from("products")
+    .select("*, product_images(url, position), product_specs(label, value, position)")
+    .eq("id", product.id)
+    .single();
+
+  return NextResponse.json(mapProduct(fullProduct), { status: 201 });
+}

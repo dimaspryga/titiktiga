@@ -29,6 +29,7 @@ export interface Product {
   specs: ProductSpec[];
   stock: number;
   featured: boolean;
+  rating?: number | null;
   status: "active" | "draft";
   createdAt: string;
 }
@@ -101,6 +102,7 @@ export interface Order {
   shippingFee: number;
   total: number;
   status: OrderStatus;
+  paymentMethod?: "transfer" | "midtrans" | string;
   paymentStatus?: "waiting" | "submitted" | "approved" | "rejected";
   paymentNote?: string;
   paymentProof?: string | null;
@@ -137,6 +139,7 @@ export interface Service {
   description: LocalizedText;
   deliverables: LocalizedText[];
   priceFrom: number;
+  image: string;
 }
 
 export interface PortfolioProject {
@@ -191,6 +194,8 @@ export interface SiteContent {
     mission: LocalizedText[];
     philosophy: LocalizedText;
     images: string[];
+    videoUrl?: string;
+    videoPoster?: string;
   };
   stats: Stat[];
   cta: { title: LocalizedText; subtitle: LocalizedText; button: LocalizedText };
@@ -237,4 +242,76 @@ export interface CartTotals {
   shippingFee: number;
   total: number;
   freeShipping: boolean;
+}
+
+export interface PricingPeriod {
+  id: string;
+  label: LocalizedText;
+  months: number;
+  discountPercent: number;
+}
+
+export interface PricingTier {
+  id: string;
+  name: string;
+  tagline: LocalizedText;
+  monthlyPrice: number;
+  parallelProjects: number;
+  brands: LocalizedText;
+  features: LocalizedText[];
+  highlighted: boolean;
+}
+
+export interface FaqItem {
+  id: string;
+  question: LocalizedText;
+  answer: LocalizedText;
+}
+
+export interface Step {
+  id: string;
+  index: string;
+  title: LocalizedText;
+  description: LocalizedText;
+  image?: string;
+}
+
+export interface PainPoint {
+  id: string;
+  title: LocalizedText;
+  description: LocalizedText;
+}
+
+export interface Facility {
+  id: string;
+  title: LocalizedText;
+  description: LocalizedText;
+}
+
+export interface Benefit {
+  id: string;
+  label: LocalizedText;
+}
+
+export interface DeliverableGroup {
+  id: string;
+  label: LocalizedText;
+  items: LocalizedText[];
+}
+
+export interface EngagementContent {
+  trustedClients: string[];
+  painPoints: PainPoint[];
+  steps: Step[];
+  deliverableGroups: DeliverableGroup[];
+  facilities: Facility[];
+  benefits: Benefit[];
+  faq: FaqItem[];
+  pricing: {
+    periods: PricingPeriod[];
+    tiers: PricingTier[];
+    allInclude: LocalizedText[];
+    customTitle: LocalizedText;
+    customBody: LocalizedText;
+  };
 }

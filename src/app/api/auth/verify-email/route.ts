@@ -1,15 +1,36 @@
 import { createHash } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
-import pool from "@/lib/mysql";
+import supabase from "@/lib/supabase";
+import { applicationUrl } from "@/lib/runtime-env";
 
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get("token") ?? "";
-  if (!token) return NextResponse.redirect(new URL("/login?verified=invalid", req.url));
+  if (!token) return NextResponse.redirect(new URL("/login?verified=invalid", applicationUrl(req.url, req.headers)));
+
   const hash = createHash("sha256").update(token).digest("hex");
-  const [rows] = await pool.execute("SELECT user_id FROM email_verification_tokens WHERE token_hash=? AND used_at IS NULL AND expires_at > UTC_TIMESTAMP() LIMIT 1", [hash]);
-  const row = (rows as any[])[0];
-  if (!row) return NextResponse.redirect(new URL("/login?verified=invalid", req.url));
-  await pool.execute("UPDATE users SET email_verified_at=UTC_TIMESTAMP() WHERE id=?", [row.user_id]);
-  await pool.execute("UPDATE email_verification_tokens SET used_at=UTC_TIMESTAMP() WHERE token_hash=?", [hash]);
-  return NextResponse.redirect(new URL("/login?verified=success", req.url));
+  const now = new Date().toISOString();
+
+  const { data: row } = await supabase
+    .from("email_verification_tokens")
+    .select("user_id, expires_at, used_at")
+    .eq("token_hash", hash)
+    .is("used_at", null)
+    .gt("expires_at", now)
+    .maybeSingle();
+
+  if (!row) {
+    return NextResponse.redirect(new URL("/login?verified=invalid", applicationUrl(req.url, req.headers)));
+  }
+
+  await supabase
+    .from("users")
+    .update({ email_verified_at: now })
+    .eq("id", row.user_id);
+
+  await supabase
+    .from("email_verification_tokens")
+    .update({ used_at: now })
+    .eq("token_hash", hash);
+
+  return NextResponse.redirect(new URL("/login?verified=success", applicationUrl(req.url, req.headers)));
 }

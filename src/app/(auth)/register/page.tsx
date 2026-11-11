@@ -81,10 +81,6 @@ function RegisterContent() {
       <h1 className="font-display text-4xl font-medium tracking-tight md:text-5xl">{t("auth.register.title")}</h1>
       <p className="mt-3 text-sm text-muted-foreground">{t("auth.register.subtitle")}</p>
 
-      <Button asChild variant="outline" className="mt-6 h-12 w-full rounded-none" data-testid="google-register-button">
-        <a href="/api/auth/google">Daftar dengan Google</a>
-      </Button>
-
       <form onSubmit={form.handleSubmit(onSubmit)} className="mt-8 space-y-5" data-testid="register-form" noValidate>
         <div className="space-y-2">
           <Label htmlFor="register-name">{t("auth.name")}</Label>

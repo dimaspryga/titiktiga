@@ -4,12 +4,19 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
-import { CountUp, LineMask, Magnetic, Marquee, ParallaxImg, Reveal, Stagger, StaggerItem } from "@/components/motion";
+import { CountUp, LineMask, Magnetic, ParallaxImg, Reveal, Stagger, StaggerItem } from "@/components/motion";
+import { MarqueeBand } from "@/components/marquee-band";
+import { TestimonialMarquee } from "@/components/testimonial-marquee";
+import { SectionDivider } from "@/components/section-divider";
+import { ConsultButtons } from "@/components/consult-buttons";
+import { DotsArc, Squiggle } from "@/components/doodles";
 import { SectionHeading } from "@/components/section-heading";
 import { ProductCard } from "@/components/product-card";
 import { Button } from "@/components/ui/button";
-import { useCategories, useContent, usePortfolio, useProducts, usePromotions, useServices, useTestimonials } from "@/lib/hooks";
+import { useCategories, useContent, usePortfolio, useProducts, usePromotions, useServices, useTestimonials, useEngagement } from "@/lib/hooks";
 import { useI18n } from "@/lib/i18n";
+import { computePeriodicPrice } from "@/lib/services/pricing";
+import { formatIDR } from "@/lib/utils";
 
 export default function HomePage() {
   const { t, tt } = useI18n();
@@ -20,6 +27,7 @@ export default function HomePage() {
   const { data: services } = useServices();
   const { data: testimonials } = useTestimonials();
   const { data: promotions } = usePromotions();
+  const { data: engagement } = useEngagement();
 
   const featured = (content?.featuredProductIds ?? [])
     .map((id) => products?.items.find((p) => p.id === id))
@@ -29,11 +37,13 @@ export default function HomePage() {
     .filter((c): c is NonNullable<typeof c> => Boolean(c));
   const works = (portfolio ?? []).slice(0, 3);
   const banner = promotions?.find((p) => p.placement === "home-banner" && p.active);
+  const tiers = (engagement?.pricing.tiers ?? []).slice(0, 3);
 
   return (
     <div data-testid="home-page">
       {/* HERO */}
       <section className="relative overflow-hidden">
+        <DotsArc className="pointer-events-none absolute right-6 top-8 hidden w-24 text-lime lg:block" />
         <div className="mx-auto grid max-w-7xl gap-12 px-4 pb-16 pt-14 md:px-8 md:pt-20 lg:grid-cols-12 lg:items-end">
           <div className="lg:col-span-7">
             <p className="mb-6 flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
@@ -61,15 +71,15 @@ export default function HomePage() {
               </p>
               <div className="mt-10 flex flex-wrap items-center gap-4">
                 <Magnetic>
-                  <Button asChild className="h-13 rounded-none bg-lime px-8 text-base font-semibold text-lime-foreground hover:bg-lime/85" data-testid="hero-cta-products">
-                    <Link href="/products" className="h-13 items-center gap-2 text-base">
+                  <Button asChild className="h-12 rounded-none bg-lime px-8 text-base font-semibold text-lime-foreground hover:bg-lime/85" data-testid="hero-cta-products">
+                    <Link href="/products" className="h-12 items-center gap-2 text-base">
                       {t("hero.ctaProducts")} <ArrowRight className="h-4 w-4" />
                     </Link>
                   </Button>
                 </Magnetic>
                 <Magnetic>
-                  <Button asChild variant="outline" className="h-13 rounded-none px-8 text-base" data-testid="hero-cta-portfolio">
-                    <Link href="/portfolio" className="h-13 items-center text-base">
+                  <Button asChild variant="outline" className="h-12 rounded-none px-8 text-base" data-testid="hero-cta-portfolio">
+                    <Link href="/portfolio" className="h-12 items-center text-base">
                       {t("hero.ctaPortfolio")}
                     </Link>
                   </Button>
@@ -89,7 +99,7 @@ export default function HomePage() {
                   priority
                 />
                 <p className="absolute -bottom-5 left-6 bg-foreground px-3 py-2 font-mono text-[10px] uppercase tracking-[0.2em] text-background">
-                  Est. 2018 — Magelang
+                  Est. 2018 — Yogyakarta
                 </p>
               </div>
             </Reveal>
@@ -133,8 +143,8 @@ export default function HomePage() {
       </section>
 
       {/* MARQUEE */}
-      <section className="border-y border-border py-8 md:py-10" aria-label="Marquee">
-        <Marquee items={(content?.marquee ?? []).map((m) => tt(m))} />
+      <section className="border-b border-border py-8 md:py-10" aria-label="Marquee">
+        <MarqueeBand items={(content?.marquee ?? []).map((m) => tt(m))} />
       </section>
 
       {/* FEATURED CATEGORIES */}
@@ -156,19 +166,65 @@ export default function HomePage() {
         />
         <Stagger className="grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
           {featured.map((product) => (
-            <StaggerItem key={product.id}>
-              <ProductCard product={product} />
+            <StaggerItem key={product.id} className="h-full">
+              <ProductCard product={product} className="h-full" />
             </StaggerItem>
           ))}
         </Stagger>
       </section>
 
-      {/* ABOUT PREVIEW */}
-      <section className="border-y border-border bg-card">
-        <div className="mx-auto grid max-w-7xl gap-12 px-4 py-24 md:px-8 md:py-32 lg:grid-cols-2 lg:items-center">
+      {/* PRICING TEASER */}
+      <section className="border-t border-border">
+        <div className="mx-auto max-w-7xl px-4 py-24 md:px-8 md:py-32" data-testid="home-pricing-teaser">
+          <SectionHeading
+            eyebrow={t("home.pricing.eyebrow")}
+            title={t("home.pricing.title")}
+            action={
+              <Link href="/pricing" className="link-underline flex items-center gap-2 font-mono text-xs uppercase tracking-[0.18em]" data-testid="home-pricing-cta">
+                {t("home.pricing.cta")} <ArrowRight className="h-4 w-4" />
+              </Link>
+            }
+          />
+          <Stagger className="grid gap-6 md:grid-cols-3">
+            {tiers.map((tier) => (
+              <StaggerItem key={tier.id} className="h-full">
+                <Link
+                  href="/pricing"
+                  data-testid={`home-pricing-tier-${tier.id}`}
+                  className="group flex h-full flex-col border border-border bg-card p-8 transition-colors hover:border-lime"
+                >
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-display text-2xl font-medium">{tier.name}</h3>
+                    {tier.highlighted && (
+                      <span className="bg-lime px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest text-lime-foreground">
+                        {t("pricing.popular")}
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-2 text-sm text-muted-foreground">{tt(tier.tagline)}</p>
+                  <p className="mt-6 font-display text-3xl font-semibold tracking-tight">
+                    {formatIDR(computePeriodicPrice(tier.monthlyPrice, 0))}
+                    <span className="ml-1 font-mono text-xs font-normal text-muted-foreground">{t("pricing.perMonth")}</span>
+                  </p>
+                  <span className="mt-6 inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.18em] text-foreground">
+                    {t("pricing.custom.cta")}
+                    <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+                  </span>
+                </Link>
+              </StaggerItem>
+            ))}
+          </Stagger>
+        </div>
+      </section>
+
+      {/* ABOUT PREVIEW — siluet kurva */}
+      <SectionDivider background="hsl(var(--background))" fill="hsl(var(--card))" variant="hill" />
+      <section className="bg-card pb-24 pt-4 md:pb-32">
+        <div className="mx-auto grid max-w-7xl gap-12 px-4 md:px-8 lg:grid-cols-2 lg:items-center">
           <Reveal>
             <div className="texture-grain relative aspect-[4/3] overflow-hidden">
               <ParallaxImg src={content?.aboutPreview.image ?? ""} alt={tt(content?.aboutPreview.title)} className="h-full w-full" range={6} />
+              <Squiggle className="absolute -bottom-3 right-4 h-5 w-32 text-lime" />
             </div>
           </Reveal>
           <Reveal delay={0.15}>
@@ -185,6 +241,7 @@ export default function HomePage() {
           </Reveal>
         </div>
       </section>
+      <SectionDivider background="hsl(var(--card))" fill="hsl(var(--background))" variant="dip" flip />
 
       {/* SERVICES */}
       <section className="mx-auto max-w-7xl px-4 py-24 md:px-8 md:py-32">
@@ -252,30 +309,25 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* TESTIMONIALS */}
-      <section className="border-y border-border bg-card">
-        <div className="mx-auto max-w-7xl px-4 py-24 md:px-8 md:py-32">
+      {/* TESTIMONIALS — siluet kurva + marquee */}
+      <SectionDivider background="hsl(var(--background))" fill="hsl(var(--card))" variant="dip" />
+      <section className="bg-card pb-24 pt-4 md:pb-32">
+        <div className="mx-auto max-w-7xl px-4 md:px-8">
           <SectionHeading eyebrow={t("home.testimonials.eyebrow")} title={t("home.testimonials.title")} />
-          <Stagger className="grid gap-10 md:grid-cols-2 md:gap-14">
-            {(testimonials ?? []).slice(0, 4).map((testimonial) => (
-              <StaggerItem key={testimonial.id} className="border-t border-border pt-8">
-                <blockquote className="font-display text-2xl font-normal leading-snug md:text-3xl">
-                  <span className="text-lime">“</span>
-                  {tt(testimonial.quote)}
-                  <span className="text-lime">”</span>
-                </blockquote>
-                <div className="mt-6 flex items-center gap-4">
-                  <Image src={testimonial.avatar} alt={testimonial.name} width={44} height={44} className="h-11 w-11 rounded-full object-cover" />
-                  <div>
-                    <p className="text-sm font-semibold" data-testid="testimonial-name">{testimonial.name}</p>
-                    <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{tt(testimonial.role)}</p>
-                  </div>
-                </div>
-              </StaggerItem>
-            ))}
-          </Stagger>
+        </div>
+        <div className="mt-14">
+          <TestimonialMarquee
+            items={(testimonials ?? []).map((tst) => ({
+              id: tst.id,
+              quote: tt(tst.quote),
+              name: tst.name,
+              role: tt(tst.role),
+              avatar: tst.avatar,
+            }))}
+          />
         </div>
       </section>
+      <SectionDivider background="hsl(var(--card))" fill="hsl(var(--background))" variant="hill" flip />
 
       {/* CTA */}
       <section className="mx-auto max-w-7xl px-4 py-24 text-center md:px-8 md:py-36" data-testid="home-cta">
@@ -297,6 +349,10 @@ export default function HomePage() {
               <Link href="/contact">{tt(content?.cta.button)}</Link>
             </Button>
           </Magnetic>
+          <div className="mt-8 flex justify-center">
+            <ConsultButtons />
+          </div>
+          <Squiggle className="mx-auto mt-10 h-4 w-40 text-lime" />
         </Reveal>
       </section>
     </div>

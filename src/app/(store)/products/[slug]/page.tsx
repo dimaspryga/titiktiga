@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
-import { ArrowLeft, Expand } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Expand } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { AddToCartButton, BuyNowButton } from "@/components/add-to-cart-button";
 import { QuantityStepper } from "@/components/quantity-stepper";
@@ -27,6 +27,16 @@ export default function ProductDetailPage() {
   const [imageIndex, setImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [viewerOpen, setViewerOpen] = useState(false);
+
+  const showPreviousImage = () => {
+    if (!product?.images.length) return;
+    setImageIndex((current) => (current - 1 + product.images.length) % product.images.length);
+  };
+
+  const showNextImage = () => {
+    if (!product?.images.length) return;
+    setImageIndex((current) => (current + 1) % product.images.length);
+  };
 
   if (isLoading) {
     return (
@@ -87,10 +97,10 @@ export default function ProductDetailPage() {
             <button
               type="button"
               onClick={() => setViewerOpen(true)}
-              aria-label={`Lihat ${product.name} seutuhnya`}
-              className="absolute bottom-4 right-4 flex h-10 items-center gap-2 bg-background/90 px-3 text-xs font-medium backdrop-blur hover:bg-background"
+              aria-label={`${t("product.viewFull")} ${product.name}`}
+              className="absolute bottom-4 right-4 flex h-10 items-center gap-2 bg-background/80 px-3 text-xs font-medium backdrop-blur-md transition-colors hover:bg-background/95"
             >
-              <Expand className="h-4 w-4" /> Lihat penuh
+              <Expand className="h-4 w-4" /> {t("product.viewFull")}
             </button>
             <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
               <DialogContent className="max-w-[95vw] border-0 bg-black/95 p-2 sm:max-w-5xl" aria-describedby={undefined}>
@@ -103,6 +113,29 @@ export default function ProductDetailPage() {
                     sizes="95vw"
                     className="object-contain"
                   />
+                  {product.images.length > 1 && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={showPreviousImage}
+                        aria-label="Gambar sebelumnya"
+                        className="absolute left-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center bg-background/90 text-foreground backdrop-blur hover:bg-background"
+                      >
+                        <ChevronLeft className="h-6 w-6" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={showNextImage}
+                        aria-label="Gambar berikutnya"
+                        className="absolute right-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center bg-background/90 text-foreground backdrop-blur hover:bg-background"
+                      >
+                        <ChevronRight className="h-6 w-6" />
+                      </button>
+                      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-background/90 px-3 py-1 text-xs font-medium backdrop-blur">
+                        {imageIndex + 1} / {product.images.length}
+                      </div>
+                    </>
+                  )}
                 </div>
               </DialogContent>
             </Dialog>

@@ -1,60 +1,51 @@
-import fs from "node:fs/promises";
-import path from "node:path";
-import mysql from "mysql2/promise";
+import { createClient } from "@supabase/supabase-js";
+import dotenv from "dotenv";
 
-function connectionOptions() {
-  const mysqlUrl = process.env.MYSQL_URL?.trim();
-  if (mysqlUrl) {
-    const url = new URL(mysqlUrl);
-    return {
-      host: url.hostname,
-      port: url.port ? Number(url.port) : 3306,
-      user: decodeURIComponent(url.username),
-      password: decodeURIComponent(url.password),
-      database: decodeURIComponent(url.pathname.replace(/^\//, "")),
-      multipleStatements: false,
-      ssl: process.env.MYSQL_SSL === "true" ? { rejectUnauthorized: process.env.MYSQL_SSL_REJECT_UNAUTHORIZED !== "false" } : undefined,
-    };
-  }
+dotenv.config({ path: ".env.local" });
 
-  return {
-    host: process.env.MYSQL_HOST ?? "127.0.0.1",
-    port: Number(process.env.MYSQL_PORT ?? 3306),
-    user: process.env.MYSQL_USER ?? "root",
-    password: process.env.MYSQL_PASSWORD ?? "",
-    database: process.env.MYSQL_DATABASE ?? "titiktiga",
-    multipleStatements: false,
-  };
+const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "https://ipyfobhccfdgrfioscji.supabase.co";
+const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!key) {
+  console.error("Error: SUPABASE_SERVICE_ROLE_KEY atau NEXT_PUBLIC_SUPABASE_ANON_KEY belum dikonfigurasi di .env.local");
+  process.exit(1);
 }
 
-function prepareSql(sql) {
-  return sql
-    .replace(/^DROP DATABASE IF EXISTS[^;]*;?/i, "")
-    .replace(/^CREATE DATABASE[^;]*;?/i, "")
-    .replace(/^USE\s+[^;]*;?/i, "")
-    .replace(/CREATE TABLE\s+(?!IF NOT EXISTS)/gi, "CREATE TABLE IF NOT EXISTS ")
-    .replace(/^INSERT INTO\s+/gim, "INSERT IGNORE INTO ");
-}
+const supabase = createClient(url, key);
 
 async function main() {
-  const sqlPath = path.join(process.cwd(), "database", "mysql.sql");
-  const source = await fs.readFile(sqlPath, "utf8");
-  const connection = await mysql.createConnection(connectionOptions());
-  let statementCount = 0;
+  console.log(`Menghubungkan ke Supabase di: ${url}...`);
 
-  try {
-    for (const statement of prepareSql(source).split(";").map((item) => item.trim()).filter(Boolean)) {
-      await connection.query(statement);
-      statementCount += 1;
+  const tables = [
+    "users",
+    "categories",
+    "products",
+    "vouchers",
+    "orders",
+    "services",
+    "portfolio_projects",
+    "testimonials",
+    "promotions",
+    "site_content",
+    "payment_accounts",
+    "engagement_content",
+  ];
+
+  let successCount = 0;
+  for (const table of tables) {
+    const { count, error } = await supabase.from(table).select("*", { count: "exact", head: true });
+    if (error) {
+      console.warn(`  [!] Tabel '${table}': ${error.message}`);
+    } else {
+      console.log(`  [OK] Tabel '${table}' aktif (jumlah data: ${count ?? 0})`);
+      successCount++;
     }
-  } finally {
-    await connection.end();
   }
 
-  console.log(`Database initialized successfully (${statementCount} statements).`);
+  console.log(`\nVerifikasi selesai: ${successCount}/${tables.length} tabel siap digunakan di Supabase.`);
 }
 
-main().catch((error) => {
-  console.error("Database initialization failed:", error instanceof Error ? error.message : error);
+main().catch((err) => {
+  console.error("Inisialisasi database Supabase gagal:", err);
   process.exit(1);
 });

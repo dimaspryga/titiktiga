@@ -45,6 +45,7 @@ export function ProductForm({
           shortDescription: initial.shortDescription,
           description: initial.description,
           specs: initial.specs.length > 0 ? initial.specs : [],
+          rating: initial.rating ?? null,
           featured: initial.featured,
           status: initial.status,
         }
@@ -59,6 +60,7 @@ export function ProductForm({
           shortDescription: { id: "", en: "" },
           description: { id: "", en: "" },
           specs: [],
+          rating: null,
           featured: false,
           status: "active",
         },
@@ -86,6 +88,7 @@ export function ProductForm({
       shortDescription: values.shortDescription,
       description: values.description,
       specs: (values.specs ?? []).filter((s) => s.label.id && s.label.en && s.value),
+      rating: values.rating == null || Number(values.rating) <= 0 ? null : Number(values.rating),
       featured: values.featured,
       status: values.status,
     };
@@ -95,7 +98,16 @@ export function ProductForm({
   const err = (msg?: string) => (msg ? <p className="text-xs text-destructive">{msg}</p> : null);
 
   return (
-    <form onSubmit={form.handleSubmit(submit)} className="space-y-10" data-testid="admin-product-form" noValidate>
+    <form
+      onSubmit={form.handleSubmit(submit, () => {
+        toast.error("Produk belum lengkap", {
+          description: "Periksa kembali bidang yang ditandai sebelum menyimpan.",
+        });
+      })}
+      className="space-y-10"
+      data-testid="admin-product-form"
+      noValidate
+    >
       <div className="grid gap-10 lg:grid-cols-2">
         <div className="space-y-6">
           <div className="space-y-2">
@@ -124,7 +136,7 @@ export function ProductForm({
             </Select>
             {err(form.formState.errors.category?.message)}
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <div className="space-y-2">
               <Label htmlFor="pf-price">{t("admin.table.price")} (Rp)</Label>
               <Input id="pf-price" type="number" data-testid="admin-product-price" {...form.register("price")} className="h-11 rounded-none" />
@@ -139,6 +151,21 @@ export function ProductForm({
               <Label htmlFor="pf-stock">{t("admin.table.stock")}</Label>
               <Input id="pf-stock" type="number" data-testid="admin-product-stock" {...form.register("stock")} className="h-11 rounded-none" />
               {err(form.formState.errors.stock?.message)}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pf-rating">{t("product.rating")} (0–5)</Label>
+              <Input
+                id="pf-rating"
+                type="number"
+                step="0.1"
+                min={0}
+                max={5}
+                placeholder="—"
+                data-testid="admin-product-rating"
+                {...form.register("rating")}
+                className="h-11 rounded-none"
+              />
+              {err(form.formState.errors.rating?.message)}
             </div>
           </div>
 

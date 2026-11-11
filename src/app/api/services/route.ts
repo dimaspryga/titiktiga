@@ -1,26 +1,77 @@
 import { NextResponse } from "next/server";
-import { randomUUID } from "crypto";
-import pool from "@/lib/mysql";
+import supabase from "@/lib/supabase";
 import { seedServices } from "@/lib/mock/site";
 
-const json = (value: unknown, fallback: unknown = {}) => typeof value === "string" ? (() => { try { return JSON.parse(value); } catch { return fallback; } })() : (value ?? fallback);
+const json = (value: unknown, fallback: unknown = {}) =>
+  typeof value === "string"
+    ? (() => {
+        try {
+          return JSON.parse(value);
+        } catch {
+          return fallback;
+        }
+      })()
+    : value ?? fallback;
 
 export async function GET() {
-  let [rows] = await pool.execute("SELECT * FROM services ORDER BY index_label");
-  if (!(rows as any[]).length) {
+  const { data: initialServices, error } = await supabase
+    .from("services")
+    .select("*, service_deliverables(label, position)")
+    .order("index_label", { ascending: true });
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  let services = initialServices;
+  if (!services || services.length === 0) {
     for (const service of seedServices) {
-      const id = randomUUID();
-      await pool.execute("INSERT INTO services(id,slug,index_label,title,description,price_from) VALUES (?,?,?,?,?,?)", [id, service.slug, service.index, JSON.stringify(service.title), JSON.stringify(service.description), service.priceFrom]);
-      for (let position = 0; position < service.deliverables.length; position++) {
-        await pool.execute("INSERT INTO service_deliverables(id,service_id,label,position) VALUES (UUID(),?,?,?)", [id, JSON.stringify(service.deliverables[position]), position]);
+      const { data: createdService } = await supabase
+        .from("services")
+        .insert({
+          slug: service.slug,
+          index_label: service.index,
+          title: service.title,
+          description: service.description,
+          price_from: service.priceFrom,
+          image_url: service.image ?? "",
+        })
+        .select()
+        .single();
+
+      if (createdService && service.deliverables?.length) {
+        const deliverables = service.deliverables.map((label: any, position: number) => ({
+          service_id: createdService.id,
+          label,
+          position,
+        }));
+        await supabase.from("service_deliverables").insert(deliverables);
       }
     }
-    [rows] = await pool.execute("SELECT * FROM services ORDER BY index_label");
+
+    const recheck = await supabase
+      .from("services")
+      .select("*, service_deliverables(label, position)")
+      .order("index_label", { ascending: true });
+
+    services = recheck.data ?? [];
   }
-  const result: any[] = [];
-  for (const service of rows as any[]) {
-    const [deliverables] = await pool.execute("SELECT label FROM service_deliverables WHERE service_id=? ORDER BY position", [service.id]);
-    result.push({ id: service.id, slug: service.slug, index: service.index_label, title: json(service.title), description: json(service.description), deliverables: (deliverables as any[]).map((item) => json(item.label)), priceFrom: Number(service.price_from) });
-  }
+
+  const result = (services ?? []).map((service: any) => {
+    const sortedDeliverables = (service.service_deliverables ?? []).sort(
+      (a: any, b: any) => (a.position ?? 0) - (b.position ?? 0)
+    );
+    return {
+      id: service.id,
+      slug: service.slug,
+      index: service.index_label,
+      title: json(service.title),
+      description: json(service.description),
+      deliverables: sortedDeliverables.map((item: any) => json(item.label)),
+      priceFrom: Number(service.price_from),
+      image: service.image_url ?? "",
+    };
+  });
+
   return NextResponse.json(result);
 }

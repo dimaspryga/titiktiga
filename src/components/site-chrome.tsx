@@ -3,6 +3,7 @@
 import { SmoothScroll } from "@/components/smooth-scroll";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { FloatingContact } from "@/components/consult-buttons";
 import { useI18n } from "@/lib/i18n";
 
 export function SiteChrome({ children }: { children: React.ReactNode }) {
@@ -20,6 +21,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
         {children}
       </main>
       <SiteFooter />
+      <FloatingContact />
     </SmoothScroll>
   );
 }

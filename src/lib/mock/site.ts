@@ -135,6 +135,7 @@ export const seedServices: Service[] = [
       { id: "Stationery & aplikasi", en: "Stationery & applications" },
     ],
     priceFrom: 25000000,
+    image: "/uploads/c22fa21c-bd35-45eb-9afe-3e35271c5f50.png",
   },
   {
     id: "svc-2", slug: "desain-kemasan", index: "02",
@@ -146,6 +147,7 @@ export const seedServices: Service[] = [
       { id: "Dokumen siap cetak", en: "Print-ready artwork" },
     ],
     priceFrom: 18000000,
+    image: "/uploads/c22fa21c-bd35-45eb-9afe-3e35271c5f50.png",
   },
   {
     id: "svc-3", slug: "desain-editorial", index: "03",
@@ -157,6 +159,7 @@ export const seedServices: Service[] = [
       { id: "Pendampingan cetak", en: "Print supervision" },
     ],
     priceFrom: 15000000,
+    image: "/uploads/c22fa21c-bd35-45eb-9afe-3e35271c5f50.png",
   },
   {
     id: "svc-4", slug: "ilustrasi-grafis", index: "04",
@@ -168,6 +171,7 @@ export const seedServices: Service[] = [
       { id: "Berkas siap pakai", en: "Ready-to-use assets" },
     ],
     priceFrom: 8000000,
+    image: "/uploads/c22fa21c-bd35-45eb-9afe-3e35271c5f50.png",
   },
   {
     id: "svc-5", slug: "desain-web-digital", index: "05",
@@ -179,6 +183,7 @@ export const seedServices: Service[] = [
       { id: "Prototipe interaktif", en: "Interactive prototype" },
     ],
     priceFrom: 20000000,
+    image: "/uploads/c22fa21c-bd35-45eb-9afe-3e35271c5f50.png",
   },
 ];
 
@@ -332,6 +337,8 @@ export const seedContent: SiteContent = {
       en: "Our three dots: listen, design, tend. Listen to clients and their context. Design with reasons you can explain. Tend the result until it lives on its own.",
     },
     images: [u("1643216674491-33878507b402"), u("1663433567177-9f94be0bff4c")],
+    videoUrl: "",
+    videoPoster: u("1643216674491-33878507b402"),
   },
   stats: [
     { id: "stat-1", label: { id: "Tahun berkarya", en: "Years of work" }, value: 8, suffix: "" },

@@ -18,10 +18,19 @@ export default function NewProductPage() {
 
   const handle = async (values: ProductInput) => {
     setSubmitting(true);
-    const product = await productRepo.create(values);
-    revalidateAll();
-    toast.success(t("admin.saved"));
-    router.push(`/admin/products/${product.id}/edit`);
+    try {
+      const product = await productRepo.create(values);
+      revalidateAll();
+      toast.success("Produk berhasil ditambahkan", {
+        description: product.name,
+      });
+      router.push(`/admin/products/${product.id}/edit`);
+    } catch (error) {
+      toast.error("Produk gagal ditambahkan", {
+        description: error instanceof Error ? error.message : "Terjadi kesalahan saat menyimpan produk.",
+      });
+      setSubmitting(false);
+    }
   };
 
   return (

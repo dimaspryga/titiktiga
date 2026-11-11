@@ -17,12 +17,20 @@ function useCartAction(product: Product) {
   const session = useSessionStore((s) => s.session);
 
   return (quantity: number, mode: "add" | "buy"): boolean => {
-    if (product.stock <= 0) return false;
+    if (product.stock <= 0) {
+      toast.error("Produk sedang habis", {
+        description: `${product.name} belum tersedia untuk dibeli.`,
+      });
+      return false;
+    }
     if (!session) {
       saveIntent({
         type: mode === "buy" ? "buy-now" : "add-to-cart",
         productId: product.id,
         quantity,
+      });
+      toast.warning("Login dulu untuk melanjutkan", {
+        description: mode === "buy" ? "Belanja sekarang membutuhkan akun." : "Produk akan disimpan setelah Anda masuk.",
       });
       router.push(loginUrl(mode === "buy" ? "/checkout" : window.location.pathname));
       return false;
@@ -62,8 +70,7 @@ export function AddToCartButton({
     setBusy(true);
     const ok = act(quantity, "add");
     if (ok) {
-      toast.success(product.name, {
-        description: t("product.added"),
+      toast.success(t("product.added"), {
         action: { label: t("product.viewCart"), onClick: () => router.push("/cart") },
       });
     }
@@ -117,12 +124,8 @@ export function BuyNowButton({ product, quantity = 1 }: { product: Product; quan
       onClick={() => {
         setBusy(true);
         const ok = act(quantity, "buy");
-        if (ok) {
-          toast.success(product.name, { description: t("product.buyingNow") });
-          router.push("/checkout");
-        } else {
-          setBusy(false);
-        }
+        if (ok) router.push("/checkout");
+        else setBusy(false);
       }}
       className="h-12 flex-1 rounded-none bg-lime text-lime-foreground hover:bg-lime/85"
     >

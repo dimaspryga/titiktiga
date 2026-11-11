@@ -61,7 +61,7 @@ export default function AdminCustomersPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl font-medium md:text-4xl">{t("admin.customers")}</h1>
-          <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Data pelanggan fiktif (demo)</p>
+          <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Daftar seluruh pelanggan terdaftar</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>

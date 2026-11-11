@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { ArrowRight, Loader2, ShieldAlert } from "lucide-react";
+import { ArrowRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,15 +35,6 @@ export default function ForgotPasswordPage() {
     <div data-testid="forgot-password-page">
       <h1 className="font-display text-4xl font-medium tracking-tight md:text-5xl">{t("auth.forgot.title")}</h1>
       <p className="mt-3 text-sm text-muted-foreground">{t("auth.forgot.subtitle")}</p>
-
-      <div className="mt-6 border border-border bg-card p-4">
-        <p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-          <ShieldAlert className="h-3.5 w-3.5" /> {t("demo.badge")}
-        </p>
-        <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-          Tidak ada email sungguhan yang dikirim. Kata sandi akun demo diperbarui langsung di penyimpanan browser.
-        </p>
-      </div>
 
       {done ? (
         <div className="mt-8" data-testid="forgot-success-note">

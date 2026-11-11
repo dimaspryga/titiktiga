@@ -67,6 +67,7 @@ export const productSchema = z.object({
   category: z.string().min(1, "Pilih kategori"),
   price: z.coerce.number().int("Harus bilangan bulat").min(1000, "Minimal Rp 1.000"),
   discountPercent: z.coerce.number().min(0).max(90, "Maksimal 90%").nullable().optional(),
+  rating: z.coerce.number().min(0).max(5).nullable().optional(),
   stock: z.coerce.number().int().min(0, "Stok tidak valid"),
   images: z.array(z.string().min(4)).min(1, "Minimal 1 gambar"),
   shortDescription: z.object({

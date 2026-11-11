@@ -19,6 +19,7 @@ import {
 } from "@/lib/repositories";
 import { revalidateAll, useContent, usePortfolio, useProducts, useServices, useTestimonials, useCategories } from "@/lib/hooks";
 import { useI18n } from "@/lib/i18n";
+import { EngagementAdminTab } from "./pricing-tab";
 import type { LocalizedText, SiteContent } from "@/lib/types";
 import { formatIDR } from "@/lib/utils";
 
@@ -32,13 +33,13 @@ export default function AdminContentPage() {
       <div>
         <h1 className="font-display text-3xl font-medium md:text-4xl">Konten</h1>
         <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-          Perubahan langsung tampil di storefront (persist demo)
+          Perubahan langsung disimpan ke database dan tampil di storefront
         </p>
       </div>
 
       <Tabs defaultValue="hero" data-testid="admin-content-tabs">
         <TabsList className="flex w-full flex-wrap gap-1 rounded-none bg-transparent p-0">
-          {["hero", "about", "contact", "cta", "marquee", "featured", "testimonials", "services", "portfolio"].map((tab) => (
+          {["hero", "about", "contact", "cta", "marquee", "featured", "testimonials", "services", "pricing", "portfolio"].map((tab) => (
             <TabsTrigger key={tab} value={tab} className="rounded-none border border-border data-[state=active]:bg-foreground data-[state=active]:text-background" data-testid={`admin-content-tab-${tab}`}>
               {tab}
             </TabsTrigger>
@@ -68,6 +69,9 @@ export default function AdminContentPage() {
         </TabsContent>
         <TabsContent value="services" className="mt-6">
           <ServicesTab />
+        </TabsContent>
+        <TabsContent value="pricing" className="mt-6">
+          <EngagementAdminTab />
         </TabsContent>
         <TabsContent value="portfolio" className="mt-6">
           <PortfolioTab />
@@ -203,6 +207,8 @@ function AboutTab({ content }: { content: SiteContent }) {
           />
         ))}
         <LTField label="Filosofi" value={about.philosophy} onChange={(philosophy) => setAbout({ ...about, philosophy })} rows={3} testIdPrefix="about-philosophy" />
+        <Input value={about.videoUrl ?? ""} onChange={(event) => setAbout({ ...about, videoUrl: event.target.value })} placeholder="URL video intro (.mp4 / .webm)" className="rounded-none" />
+        <Input value={about.videoPoster ?? ""} onChange={(event) => setAbout({ ...about, videoPoster: event.target.value })} placeholder="URL poster video" className="rounded-none" />
       </div>
       <SaveButton
         saving={saving}
@@ -462,6 +468,7 @@ function ServicesTab() {
     description: { id: "", en: "" },
     deliverablesText: { id: "", en: "" },
     priceFrom: "",
+    image: "",
   });
   const [saving, setSaving] = useState(false);
 
@@ -474,6 +481,7 @@ function ServicesTab() {
         { id: draft.deliverablesText.id, en: draft.deliverablesText.en },
       ],
       priceFrom: Number(draft.priceFrom) || 0,
+      image: draft.image,
     };
     if (editing) await serviceRepo.update(editing, payload);
     revalidateAll();
@@ -506,6 +514,7 @@ function ServicesTab() {
                   en: svc.deliverables.map((d) => d.en).join(", "),
                 },
                 priceFrom: String(svc.priceFrom),
+                image: svc.image ?? "",
               });
               setOpen(true);
             }}
@@ -526,6 +535,10 @@ function ServicesTab() {
             <div className="space-y-1">
               <Label className="font-mono text-[10px] uppercase">Harga mulai (Rp)</Label>
               <Input type="number" value={draft.priceFrom} onChange={(e) => setDraft({ ...draft, priceFrom: e.target.value })} className="h-10 rounded-none" data-testid="svc-price" />
+            </div>
+            <div className="space-y-1">
+              <Label className="font-mono text-[10px] uppercase">Gambar latar layanan</Label>
+              <Input value={draft.image} onChange={(e) => setDraft({ ...draft, image: e.target.value })} placeholder="/uploads/nama-gambar.jpg atau URL gambar" className="h-10 rounded-none" data-testid="svc-image" />
             </div>
             <SaveButton saving={saving} onClick={save} />
           </div>

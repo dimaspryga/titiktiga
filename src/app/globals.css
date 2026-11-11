@@ -50,6 +50,10 @@
     --lime: 74 95% 60%;
     --lime-foreground: 60 14% 10%;
   }
+  .theme {
+    --animate-marquee: marquee var(--duration) infinite linear;
+    --animate-marquee-vertical: marquee-vertical var(--duration) linear infinite;
+  }
 }
 
 @layer base {
@@ -58,14 +62,7 @@
   }
   html {
     scroll-behavior: smooth;
-    scrollbar-gutter: stable !important;
-  }
-  html body[data-scroll-locked] {
-    --removed-body-scroll-bar-size: 0px !important;
-    margin-right: 0 !important;
-    margin-left: 0 !important;
-    padding-right: 0 !important;
-    padding-left: 0 !important;
+    scrollbar-gutter: stable;
   }
   body {
     @apply bg-background text-foreground antialiased;
@@ -125,14 +122,26 @@
   html {
     scroll-behavior: auto;
   }
-  .animate-marquee,
   .marquee-track {
     animation: none !important;
   }
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
+}
+
+@theme inline {
+  @keyframes marquee {
+  from {
+    transform: translateX(0);
+    }
+  to {
+    transform: translateX(calc(-100% - var(--gap)));
+    }
+  }
+  @keyframes marquee-vertical {
+  from {
+    transform: translateY(0);
+    }
+  to {
+    transform: translateY(calc(-100% - var(--gap)));
+    }
   }
 }

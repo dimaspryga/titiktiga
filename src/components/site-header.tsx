@@ -36,7 +36,8 @@ export function SiteHeader() {
 
   const links = [
     { href: "/products", label: t("nav.shop") },
-    // { href: "/about", label: t("nav.about") },
+    { href: "/pricing", label: t("nav.pricing") },
+    { href: "/about", label: t("nav.about") },
     { href: "/services", label: t("nav.services") },
     { href: "/portfolio", label: t("nav.portfolio") },
     { href: "/contact", label: t("nav.contact") },
@@ -54,7 +55,7 @@ export function SiteHeader() {
       )}
       <div
         className={cn(
-          "border-b border-border bg-background/90 backdrop-blur-md transition-shadow duration-300",
+          "relative z-50 border-b border-border bg-background/90 backdrop-blur-md transition-shadow duration-300",
           scrolled && "shadow-[0_1px_0_0_hsl(var(--border))]"
         )}
       >
@@ -134,25 +135,9 @@ export function SiteHeader() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
             transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed inset-0 z-50 flex flex-col justify-between overflow-y-auto bg-background px-6 pb-10 pt-6 lg:hidden"
+            className="fixed inset-x-0 top-16 bottom-0 z-30 flex flex-col justify-between overflow-y-auto bg-background px-6 pb-10 pt-8 lg:hidden"
             data-testid="mobile-menu"
           >
-            {/* Header row inside overlay: logo + close button */}
-            <div className="mb-6 flex items-center justify-between">
-              <Link href="/" aria-label="Titiktiga — Beranda" onClick={() => setOpen(false)}>
-                <Logo />
-              </Link>
-              <button
-                type="button"
-                aria-label={t("nav.close")}
-                data-testid="mobile-menu-close"
-                onClick={() => setOpen(false)}
-                className="flex h-11 w-11 items-center justify-center rounded-full transition-colors hover:bg-accent"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
             <nav className="flex flex-col gap-2" aria-label="Mobile">
               {[{ href: "/", label: t("nav.home") }, ...links].map((link, i) => (
                 <motion.div
@@ -175,7 +160,7 @@ export function SiteHeader() {
               <div className="flex items-center justify-between">
                 <LanguageToggle />
                 <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                  {t("demo.badge")} — {new Date().getFullYear()}
+                  Titiktiga Studio — {new Date().getFullYear()}
                 </span>
               </div>
               <div className="flex gap-3">

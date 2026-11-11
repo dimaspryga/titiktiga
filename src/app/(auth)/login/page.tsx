@@ -78,10 +78,6 @@ function LoginContent() {
       <h1 className="font-display text-4xl font-medium tracking-tight md:text-5xl">{t("auth.login.title")}</h1>
       <p className="mt-3 text-sm text-muted-foreground">{t("auth.login.subtitle")}</p>
 
-      <Button asChild variant="outline" className="mt-6 h-12 w-full rounded-none" data-testid="google-login-button">
-        <a href="/api/auth/google">Masuk dengan Google</a>
-      </Button>
-
       <div className="mt-6 border border-border bg-card p-4" data-testid="login-demo-credentials">
         <p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
           <ShieldAlert className="h-3.5 w-3.5" /> {t("auth.demo.title")} — {t("demo.badge")}
@@ -105,7 +101,7 @@ function LoginContent() {
             admin@titiktiga.studio
           </button>
         </div>
-        <p className="mt-2 font-mono text-[10px] text-muted-foreground">password: demo1234 / admin1234</p>
+        <p className="mt-2 text-xs text-muted-foreground">Kata sandi pelanggan: <strong>demo1234</strong>. Kata sandi admin: <strong>admin1234</strong>.</p>
       </div>
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="mt-8 space-y-5" data-testid="login-form" noValidate>

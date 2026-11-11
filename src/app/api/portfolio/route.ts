@@ -1,24 +1,127 @@
-import { randomUUID } from "crypto";
-import { NextResponse } from "next/server";
-import pool from "@/lib/mysql";
+import { NextRequest, NextResponse } from "next/server";
+import supabase from "@/lib/supabase";
 import { seedPortfolio } from "@/lib/mock/site";
 
-const json = (value: unknown, fallback: unknown = {}) => typeof value === "string" ? (() => { try { return JSON.parse(value); } catch { return fallback; } })() : (value ?? fallback);
+const json = (value: unknown, fallback: unknown = {}) =>
+  typeof value === "string"
+    ? (() => {
+        try {
+          return JSON.parse(value);
+        } catch {
+          return fallback;
+        }
+      })()
+    : value ?? fallback;
 
 export async function GET() {
-  let [rows] = await pool.execute("SELECT * FROM portfolio_projects ORDER BY year DESC, title");
-  if (!(rows as any[]).length) {
+  const { data: initialProjects, error } = await supabase
+    .from("portfolio_projects")
+    .select("*, portfolio_images(url, position)")
+    .order("year", { ascending: false })
+    .order("title", { ascending: true });
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  let projects = initialProjects;
+  if (!projects || projects.length === 0) {
     for (const project of seedPortfolio) {
-      const id = randomUUID();
-      await pool.execute("INSERT INTO portfolio_projects(id,slug,title,client,category,year,cover_url,description,service_tags) VALUES (?,?,?,?,?,?,?,?,?)", [id, project.slug, project.title, project.client, JSON.stringify(project.category), project.year, project.cover, JSON.stringify(project.description), JSON.stringify(project.services)]);
-      for (let position = 0; position < project.images.length; position++) await pool.execute("INSERT INTO portfolio_images(id,project_id,url,position) VALUES (UUID(),?,?,?)", [id, project.images[position], position]);
+      const { data: createdProject } = await supabase
+        .from("portfolio_projects")
+        .insert({
+          slug: project.slug,
+          title: project.title,
+          client: project.client,
+          category: project.category,
+          year: project.year,
+          cover_url: project.cover,
+          description: project.description,
+          service_tags: project.services,
+        })
+        .select()
+        .single();
+
+      if (createdProject && project.images?.length) {
+        const images = project.images.map((url: string, position: number) => ({
+          project_id: createdProject.id,
+          url,
+          position,
+        }));
+        await supabase.from("portfolio_images").insert(images);
+      }
     }
-    [rows] = await pool.execute("SELECT * FROM portfolio_projects ORDER BY year DESC, title");
+
+    const recheck = await supabase
+      .from("portfolio_projects")
+      .select("*, portfolio_images(url, position)")
+      .order("year", { ascending: false })
+      .order("title", { ascending: true });
+
+    projects = recheck.data ?? [];
   }
-  const result: any[] = [];
-  for (const project of rows as any[]) {
-    const [images] = await pool.execute("SELECT url FROM portfolio_images WHERE project_id=? ORDER BY position", [project.id]);
-    result.push({ id: project.id, slug: project.slug, title: project.title, client: project.client, category: json(project.category), year: project.year, cover: project.cover_url, images: (images as any[]).map((image) => image.url), description: json(project.description), services: json(project.service_tags, []) });
-  }
+
+  const result = (projects ?? []).map((project: any) => {
+    const sortedImages = (project.portfolio_images ?? []).sort(
+      (a: any, b: any) => (a.position ?? 0) - (b.position ?? 0)
+    );
+    return {
+      id: project.id,
+      slug: project.slug,
+      title: project.title,
+      client: project.client,
+      category: json(project.category),
+      year: project.year,
+      cover: project.cover_url ?? "",
+      images: sortedImages.map((image: any) => image.url),
+      description: json(project.description),
+      services: json(project.service_tags, []),
+    };
+  });
+
   return NextResponse.json(result);
+}
+
+export async function POST(req: NextRequest) {
+  const input = await req.json();
+  const { data: project, error } = await supabase
+    .from("portfolio_projects")
+    .insert({
+      slug: input.slug,
+      title: input.title,
+      client: input.client,
+      category: input.category,
+      year: input.year,
+      cover_url: input.cover ?? "",
+      description: input.description,
+      service_tags: input.services ?? [],
+    })
+    .select()
+    .single();
+
+  if (error || !project) {
+    return NextResponse.json({ error: error?.message ?? "Gagal menambahkan project" }, { status: 400 });
+  }
+
+  if (Array.isArray(input.images) && input.images.length > 0) {
+    const images = input.images.map((url: string, position: number) => ({
+      project_id: project.id,
+      url,
+      position,
+    }));
+    await supabase.from("portfolio_images").insert(images);
+  }
+
+  return NextResponse.json({
+    id: project.id,
+    slug: project.slug,
+    title: project.title,
+    client: project.client,
+    category: json(project.category),
+    year: project.year,
+    cover: project.cover_url,
+    images: input.images ?? [],
+    description: json(project.description),
+    services: json(project.service_tags, []),
+  }, { status: 201 });
 }

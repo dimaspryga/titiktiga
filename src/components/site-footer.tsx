@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-// import { Download } from "lucide-react";
+import { Download } from "lucide-react";
 import { LogoMark } from "@/components/logo";
 import { useI18n } from "@/lib/i18n";
 import { useContent } from "@/lib/hooks";
@@ -12,6 +12,7 @@ export function SiteFooter() {
 
   const browse = [
     { href: "/products", label: t("nav.shop") },
+    { href: "/pricing", label: t("nav.pricing") },
     { href: "/portfolio", label: t("nav.portfolio") },
     { href: "/services", label: t("nav.services") },
     { href: "/about", label: t("nav.about") },
@@ -26,7 +27,7 @@ export function SiteFooter() {
   return (
     <footer className="border-t border-border bg-foreground text-background" data-testid="site-footer">
       <div className="mx-auto max-w-7xl px-4 pb-10 pt-16 md:px-8 md:pt-24">
-        {/* <div className="mb-16 flex flex-wrap items-center justify-between gap-6 border-t border-background/15 pt-8 md:mb-20">
+        <div className="mb-16 flex flex-wrap items-center justify-between gap-6 border-t border-background/15 pt-8 md:mb-20">
           <div>
             <p className="font-display text-2xl font-medium md:text-3xl">{t("footer.download.title")}</p>
             <p className="mt-1 max-w-md font-mono text-[10px] uppercase leading-relaxed tracking-[0.16em] text-background/50">
@@ -41,7 +42,7 @@ export function SiteFooter() {
           >
             <Download className="h-4 w-4" /> {t("footer.download.label")}
           </a>
-        </div> */}
+        </div>
         <div className="grid gap-12 md:grid-cols-12">
           <div className="md:col-span-6">
             <div className="flex items-center gap-3">
@@ -93,7 +94,7 @@ export function SiteFooter() {
         </div>
         <div className="mt-6 flex flex-col gap-2 border-t border-background/15 pt-6 text-xs text-background/50 md:flex-row md:items-center md:justify-between">
           <p>© {new Date().getFullYear()} Titiktiga. {t("footer.rights")}</p>
-          <p className="font-mono uppercase tracking-[0.18em]">Magelang — Indonesia</p>
+          <p className="font-mono uppercase tracking-[0.18em]">Yogyakarta — Indonesia</p>
         </div>
       </div>
     </footer>

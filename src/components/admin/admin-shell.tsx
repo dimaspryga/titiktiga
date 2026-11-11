@@ -133,7 +133,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </div>
           <div className="flex items-center gap-2">
             <span className="bg-lime px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-widest text-lime-foreground">
-              {t("demo.badge")}
+              Live
             </span>
             <LanguageToggle />
             <ThemeToggle />

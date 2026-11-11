@@ -1,15 +1,17 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import type { CartItem } from "@/lib/types";
+import type { CartItem, Voucher } from "@/lib/types";
 import { MAX_QUANTITY, validQuantity } from "@/lib/services/pricing";
 
 interface CartState {
   items: CartItem[];
   voucherCode: string | null;
+  appliedVoucher: Voucher | null;
   add: (item: CartItem) => void;
   setQuantity: (productId: string, quantity: number) => void;
   remove: (productId: string) => void;
   setVoucher: (code: string | null) => void;
+  setAppliedVoucher: (voucher: Voucher | null) => void;
   clear: () => void;
 }
 
@@ -18,6 +20,7 @@ export const useCartStore = create<CartState>()(
     (set) => ({
       items: [],
       voucherCode: null,
+      appliedVoucher: null,
       add: (item) =>
         set((state) => {
           const existing = state.items.find((i) => i.productId === item.productId);
@@ -46,8 +49,12 @@ export const useCartStore = create<CartState>()(
         })),
       remove: (productId) =>
         set((state) => ({ items: state.items.filter((i) => i.productId !== productId) })),
-      setVoucher: (code) => set({ voucherCode: code }),
-      clear: () => set({ items: [], voucherCode: null }),
+      setVoucher: (code) => set((state) => ({
+        voucherCode: code,
+        appliedVoucher: code ? state.appliedVoucher : null,
+      })),
+      setAppliedVoucher: (voucher) => set({ appliedVoucher: voucher }),
+      clear: () => set({ items: [], voucherCode: null, appliedVoucher: null }),
     }),
     {
       name: "titiktiga.cart.v1",
