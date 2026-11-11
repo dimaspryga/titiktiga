@@ -20,11 +20,16 @@ import {
 import { revalidateAll, useContent, usePortfolio, useProducts, useServices, useTestimonials, useCategories } from "@/lib/hooks";
 import { useI18n } from "@/lib/i18n";
 import { EngagementAdminTab } from "./pricing-tab";
-import type { LocalizedText, SiteContent } from "@/lib/types";
+import type { LocalizedText, Product, SiteContent } from "@/lib/types";
 import { formatIDR } from "@/lib/utils";
 
 export default function AdminContentPage() {
   const { data: content, isLoading } = useContent();
+  const {
+    data: products,
+    isLoading: isProductsLoading,
+    error: productsError,
+  } = useProducts({ includeDrafts: true, perPage: 100 });
 
   if (isLoading || !content) return <div className="h-96 animate-pulse bg-muted/40" />;
 
@@ -62,7 +67,12 @@ export default function AdminContentPage() {
           <MarqueeTab content={content} />
         </TabsContent>
         <TabsContent value="featured" className="mt-6">
-          <FeaturedTab content={content} />
+          <FeaturedTab
+            content={content}
+            products={products?.items ?? []}
+            isLoading={isProductsLoading}
+            error={productsError}
+          />
         </TabsContent>
         <TabsContent value="testimonials" className="mt-6">
           <TestimonialsTab />
@@ -315,9 +325,18 @@ function MarqueeTab({ content }: { content: SiteContent }) {
   );
 }
 
-function FeaturedTab({ content }: { content: SiteContent }) {
+function FeaturedTab({
+  content,
+  products,
+  isLoading,
+  error,
+}: {
+  content: SiteContent;
+  products: Product[];
+  isLoading: boolean;
+  error: Error | null;
+}) {
   const { t } = useI18n();
-  const { data: products } = useProducts({ includeDrafts: true, perPage: 100 });
   const { data: categories } = useCategories();
   const [ids, setIds] = useState(content.featuredProductIds);
   const [slugs, setSlugs] = useState(content.featuredCategorySlugs);
@@ -334,12 +353,22 @@ function FeaturedTab({ content }: { content: SiteContent }) {
       <div>
         <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Produk unggulan</p>
         <div className="grid gap-2 sm:grid-cols-2">
-          {(products?.items ?? []).map((p) => (
-            <label key={p.id} className="flex items-center gap-3 border border-border px-3 py-2 text-sm transition-colors hover:bg-accent" data-testid={`admin-featured-product-${p.id}`}>
-              <input type="checkbox" checked={ids.includes(p.id)} onChange={() => setIds((prev) => toggle(prev, p.id))} className="accent-[hsl(var(--lime))]" />
-              {p.name}
-            </label>
-          ))}
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground">Memuat produk...</p>
+          ) : error ? (
+            <p role="alert" className="text-sm text-destructive">
+              Gagal memuat produk: {error.message}
+            </p>
+          ) : products.length > 0 ? (
+            products.map((p) => (
+              <label key={p.id} className="flex items-center gap-3 border border-border px-3 py-2 text-sm transition-colors hover:bg-accent" data-testid={`admin-featured-product-${p.id}`}>
+                <input type="checkbox" checked={ids.includes(p.id)} onChange={() => setIds((prev) => toggle(prev, p.id))} className="accent-[hsl(var(--lime))]" />
+                {p.name}
+              </label>
+            ))
+          ) : (
+            <p className="text-sm text-muted-foreground">Belum ada produk yang tersedia.</p>
+          )}
         </div>
       </div>
       <div>
