@@ -83,11 +83,15 @@ function LoginContent() {
           <ShieldAlert className="h-3.5 w-3.5" /> {t("auth.demo.title")} — {t("demo.badge")}
         </p>
         <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{t("auth.demo.body")}</p>
-        <div className="mt-3 flex gap-2">
+        <div className="mt-3 flex flex-wrap gap-2">
           <button
             type="button"
             data-testid="fill-demo-customer"
-            onClick={() => form.setValue("email", "demo@titiktiga.studio")}
+            onClick={() => {
+              form.setValue("email", "demo@titiktiga.studio", { shouldValidate: true });
+              form.setValue("password", "demo1234", { shouldValidate: true });
+              form.clearErrors();
+            }}
             className="border border-border px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest hover:bg-accent"
           >
             demo@titiktiga.studio
@@ -95,7 +99,11 @@ function LoginContent() {
           <button
             type="button"
             data-testid="fill-demo-admin"
-            onClick={() => form.setValue("email", "admin@titiktiga.studio")}
+            onClick={() => {
+              form.setValue("email", "admin@titiktiga.studio", { shouldValidate: true });
+              form.setValue("password", "admin1234", { shouldValidate: true });
+              form.clearErrors();
+            }}
             className="border border-border px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest hover:bg-accent"
           >
             admin@titiktiga.studio
