@@ -36,15 +36,27 @@ export function applicationUrl(requestUrl?: string, requestHeaders?: Headers): s
 }
 
 export function supabaseUrl(): string {
-  return optionalEnv("SUPABASE_URL", optionalEnv("NEXT_PUBLIC_SUPABASE_URL", "https://ipyfobhccfdgrfioscji.supabase.co"));
+  return optionalEnv(
+    "NEXT_PUBLIC_SUPABASE_URL",
+    optionalEnv("SUPABASE_URL", "https://ipyfobhccfdgrfioscji.supabase.co")
+  );
 }
 
 export function supabaseAnonKey(): string {
-  return optionalEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  return optionalEnv(
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    optionalEnv("SUPABASE_ANON_KEY", optionalEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"))
+  );
 }
 
 export function supabaseServiceRoleKey(): string {
-  return optionalEnv("SUPABASE_SERVICE_ROLE_KEY", optionalEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY"));
+  return optionalEnv(
+    "SUPABASE_SERVICE_ROLE_KEY",
+    optionalEnv(
+      "SUPABASE_SECRET_KEY",
+      optionalEnv("SUPABASE_ANON_KEY", optionalEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY"))
+    )
+  );
 }
 
 export function midtransClientKey(): string {
