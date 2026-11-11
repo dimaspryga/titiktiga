@@ -13,6 +13,7 @@ import { productRepo } from "@/lib/repositories";
 import { useProducts, revalidateAll } from "@/lib/hooks";
 import { useI18n } from "@/lib/i18n";
 import { formatIDR } from "@/lib/utils";
+import { ProductMedia } from "@/components/product-media";
 import { unitPrice } from "@/lib/services/pricing";
 
 export default function AdminProductsPage() {
@@ -73,8 +74,9 @@ export default function AdminProductsPage() {
               <tr key={product.id} className="border-b border-border/60 transition-colors hover:bg-accent/50" data-testid={`admin-product-row-${product.id}`}>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={product.images[0]} alt="" className="h-10 w-10 shrink-0 object-cover" />
+                    <div className="relative h-10 w-10 shrink-0 overflow-hidden bg-muted">
+                      <ProductMedia src={product.images[0]} alt="" fill autoPlay className="object-cover" />
+                    </div>
                     <span className="font-medium">
                       {product.name}
                       {product.featured && <Star className="ml-2 inline h-3.5 w-3.5 fill-lime text-lime" aria-label={t("admin.table.featured")} />}

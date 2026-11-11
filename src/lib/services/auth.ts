@@ -67,11 +67,11 @@ export const mockAuthAdapter = {
     return { session: sessionFromUser(data.user) };
   },
 
-  async updatePassword(email: string, newPassword: string): Promise<boolean> {
+  async requestPasswordReset(email: string, newPassword: string): Promise<boolean> {
     let response: Response;
     try {
       response = await fetch("/api/auth/password", {
-        method: "PATCH",
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, passwordHash: await hashPassword(newPassword) }),
       });
@@ -79,6 +79,6 @@ export const mockAuthAdapter = {
       return false;
     }
     const data = await response.json().catch(() => null);
-    return response.ok && Boolean(data?.updated);
+    return response.ok && Boolean(data?.requested);
   },
 };

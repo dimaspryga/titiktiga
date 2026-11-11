@@ -1,12 +1,12 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ArrowRight, ShoppingBag, TicketPercent, Trash2 } from "lucide-react";
 import { RequireAuth } from "@/components/auth-guard";
 import { EmptyState } from "@/components/empty-state";
+import { ProductMedia } from "@/components/product-media";
 import { QuantityStepper } from "@/components/quantity-stepper";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -93,7 +93,7 @@ function CartContent() {
           {items.map((item) => (
             <li key={item.productId} className="flex gap-5 py-6" data-testid={`cart-item-${item.slug}`}>
               <Link href={`/products/${item.slug}`} className="relative h-28 w-24 shrink-0 overflow-hidden bg-muted">
-                <Image src={item.image} alt={item.name} fill sizes="100px" className="object-cover" />
+                <ProductMedia src={item.image} alt={item.name} fill autoPlay sizes="100px" className="object-cover" />
               </Link>
               <div className="flex min-w-0 flex-1 flex-col justify-between gap-3">
                 <div className="flex items-start justify-between gap-4">

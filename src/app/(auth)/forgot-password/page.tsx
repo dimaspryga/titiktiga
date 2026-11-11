@@ -25,10 +25,17 @@ export default function ForgotPasswordPage() {
 
   const onSubmit = async (values: ForgotValues) => {
     setBusy(true);
-    await mockAuthAdapter.updatePassword(values.email, values.newPassword);
-    setBusy(false);
-    setDone(true);
-    toast.success(t("auth.forgot.sent"));
+    try {
+      const requested = await mockAuthAdapter.requestPasswordReset(values.email, values.newPassword);
+      if (!requested) {
+        toast.error("Email reset kata sandi gagal dikirim. Silakan coba lagi.");
+        return;
+      }
+      setDone(true);
+      toast.success(t("auth.forgot.sent"));
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (

@@ -1,12 +1,12 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { ArrowLeft, ChevronLeft, ChevronRight, Expand } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { AddToCartButton, BuyNowButton } from "@/components/add-to-cart-button";
+import { ProductMedia } from "@/components/product-media";
 import { QuantityStepper } from "@/components/quantity-stepper";
 import { PriceTag } from "@/components/price";
 import { ProductCard } from "@/components/product-card";
@@ -41,7 +41,7 @@ export default function ProductDetailPage() {
   if (isLoading) {
     return (
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 md:px-8 lg:grid-cols-2">
-        <Skeleton className="aspect-[4/5] w-full" />
+        <Skeleton className="aspect-square w-full" />
         <div className="space-y-6">
           <Skeleton className="h-6 w-24" />
           <Skeleton className="h-14 w-3/4" />
@@ -85,14 +85,15 @@ export default function ProductDetailPage() {
 
       <div className="mt-8 grid gap-12 lg:grid-cols-2">
         <div>
-          <div className="texture-grain relative aspect-[4/5] overflow-hidden bg-muted" data-testid="product-gallery-main">
-            <Image
+          <div className="texture-grain relative aspect-square overflow-hidden bg-muted" data-testid="product-gallery-main">
+            <ProductMedia
               src={product.images[imageIndex] ?? product.images[0]}
               alt={`${product.name} — ${imageIndex + 1}`}
               fill
               priority
               sizes="(max-width: 1024px) 100vw, 50vw"
-              className="object-cover"
+              controls
+              className="object-contain"
             />
             <button
               type="button"
@@ -106,11 +107,12 @@ export default function ProductDetailPage() {
               <DialogContent className="max-w-[95vw] border-0 bg-black/95 p-2 sm:max-w-5xl" aria-describedby={undefined}>
                 <DialogTitle className="sr-only">{product.name}</DialogTitle>
                 <div className="relative h-[85vh] w-full">
-                  <Image
+                  <ProductMedia
                     src={product.images[imageIndex] ?? product.images[0]}
                     alt={product.name}
                     fill
                     sizes="95vw"
+                    controls
                     className="object-contain"
                   />
                   {product.images.length > 1 && (
@@ -159,7 +161,7 @@ export default function ProductDetailPage() {
                     i === imageIndex ? "border-lime" : "border-transparent hover:border-foreground/30"
                   )}
                 >
-                  <Image src={img} alt="" fill sizes="15vw" className="object-cover" />
+                  <ProductMedia src={img} alt={`${product.name} — media ${i + 1}`} fill autoPlay sizes="15vw" className="object-contain" />
                 </button>
               ))}
             </div>
@@ -224,8 +226,8 @@ export default function ProductDetailPage() {
           <p className="mt-4 text-lg leading-relaxed text-muted-foreground">{tt(product.description)}</p>
         </Reveal>
         <Reveal delay={0.1}>
-          <div className="texture-grain relative aspect-[4/3] overflow-hidden bg-muted">
-            <Image src={product.images[product.images.length - 1]} alt={product.name} fill sizes="(max-width: 1024px) 100vw, 50vw" className="object-cover" />
+          <div className="texture-grain relative aspect-square overflow-hidden bg-muted">
+            <ProductMedia src={product.images[product.images.length - 1]} alt={product.name} fill controls sizes="(max-width: 1024px) 100vw, 50vw" className="object-contain" />
           </div>
         </Reveal>
       </div>

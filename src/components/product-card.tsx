@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowUpRight, Expand, Star } from "lucide-react";
 import { PriceTag } from "@/components/price";
 import { AddToCartButton } from "@/components/add-to-cart-button";
-import { SafeImage } from "@/components/safe-image";
+import { ProductMedia } from "@/components/product-media";
 import { useI18n } from "@/lib/i18n";
 import { useCategories } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
@@ -28,12 +28,12 @@ export function ProductCard({
     <article className={cn("group relative flex flex-col", className)} data-testid={`product-card-${product.slug}`}>
       <div className="relative aspect-[4/5] overflow-hidden bg-muted">
         <Link href={`/products/${product.slug}`} data-testid={`product-card-link-${product.slug}`} aria-label={product.name} className="absolute inset-0 block">
-          <SafeImage
+          <ProductMedia
             src={product.images[0]}
             alt={product.name}
             fill
+            autoPlay
             priority={priority}
-            fallbackLabel={product.name}
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
             className="object-cover transition-transform duration-700 ease-snappy group-hover:scale-[1.04]"
           />

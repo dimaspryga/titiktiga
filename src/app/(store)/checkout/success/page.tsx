@@ -1,11 +1,11 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { CheckCircle2, PackageCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ProductMedia } from "@/components/product-media";
 import { Skeleton } from "@/components/ui/skeleton";
 import { orderRepo } from "@/lib/repositories";
 import { useI18n } from "@/lib/i18n";
@@ -57,7 +57,7 @@ function SuccessContent() {
           {order.items.map((item) => (
             <li key={item.productId} className="flex items-center gap-3" data-testid={`checkout-success-item-${item.slug}`}>
               <div className="relative h-16 w-14 shrink-0 overflow-hidden bg-muted">
-                <Image src={item.image} alt={item.name} fill sizes="60px" className="object-cover" />
+                <ProductMedia src={item.image} alt={item.name} fill autoPlay sizes="60px" className="object-cover" />
                 <span className="absolute right-0 top-0 bg-foreground px-1.5 py-0.5 font-mono text-[10px] text-background">
                   ×{item.quantity}
                 </span>

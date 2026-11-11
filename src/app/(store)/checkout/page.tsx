@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -19,6 +18,7 @@ import {
 } from "lucide-react";
 import { RequireAuth } from "@/components/auth-guard";
 import { EmptyState } from "@/components/empty-state";
+import { ProductMedia } from "@/components/product-media";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -175,7 +175,7 @@ function CheckoutContent() {
         total: totals.total,
         status: "pending",
         paymentMethod,
-        paymentStatus: paymentMethod === "transfer" && paymentProof ? "submitted" : "waiting",
+        paymentStatus: "waiting",
         createdAt: new Date().toISOString(),
       });
 
@@ -184,7 +184,11 @@ function CheckoutContent() {
         if (paymentProof) {
           const form = new FormData();
           form.append("proof", paymentProof);
-          await fetch(`/api/uploads/payment-proof/${order.id}`, { method: "POST", body: form });
+          const proofResponse = await fetch(`/api/uploads/payment-proof/${order.id}`, { method: "POST", body: form });
+          const proofResult = await proofResponse.json().catch(() => null);
+          if (!proofResponse.ok) {
+            throw new Error(proofResult?.error ?? "Bukti pembayaran gagal disimpan. Silakan coba kembali.");
+          }
         }
         clear();
         toast.success(t("checkout.success.title"));
@@ -488,7 +492,7 @@ function CheckoutContent() {
               {items.map((item) => (
                 <li key={item.productId} className="flex items-center gap-3" data-testid={`checkout-item-${item.slug}`}>
                   <div className="relative h-16 w-14 shrink-0 overflow-hidden bg-muted">
-                    <Image src={item.image} alt={item.name} fill sizes="60px" className="object-cover" />
+                    <ProductMedia src={item.image} alt={item.name} fill autoPlay sizes="60px" className="object-cover" />
                     <span className="absolute right-0 top-0 bg-foreground px-1.5 py-0.5 font-mono text-[10px] text-background">
                       ×{item.quantity}
                     </span>
