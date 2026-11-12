@@ -20,9 +20,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     .from("portfolio_projects")
     .select("*, portfolio_images(url, position)");
 
-  const { data: project, error } = await (bySlug ? query.eq("slug", id) : query.eq("id", id)).single();
+  const { data: project, error } = await (bySlug ? query.eq("slug", id) : query.eq("id", id)).maybeSingle();
 
-  if (error || !project) return NextResponse.json(null, { status: 404 });
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!project) return NextResponse.json(null, { status: 404 });
 
   const sortedImages = (project.portfolio_images ?? []).sort(
     (a: any, b: any) => (a.position ?? 0) - (b.position ?? 0)
@@ -62,20 +63,33 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   if (Array.isArray(input.images)) {
-    await supabase.from("portfolio_images").delete().eq("project_id", id);
+    const { error: deleteImagesError } = await supabase.from("portfolio_images").delete().eq("project_id", id);
+    if (deleteImagesError) {
+      return NextResponse.json({ error: deleteImagesError.message }, { status: 500 });
+    }
     const images = input.images.map((url: string, position: number) => ({
       project_id: id,
       url,
       position,
     }));
-    await supabase.from("portfolio_images").insert(images);
+    if (images.length > 0) {
+      const { error: imagesError } = await supabase.from("portfolio_images").insert(images);
+      if (imagesError) return NextResponse.json({ error: imagesError.message }, { status: 500 });
+    }
   }
 
-  const { data: updated } = await supabase
+  const { data: updated, error: updatedError } = await supabase
     .from("portfolio_projects")
     .select("*, portfolio_images(url, position)")
     .eq("id", id)
     .single();
+
+  if (updatedError || !updated) {
+    return NextResponse.json(
+      { error: updatedError?.message ?? "Proyek tidak ditemukan" },
+      { status: updatedError ? 500 : 404 }
+    );
+  }
 
   const sortedImages = (updated?.portfolio_images ?? []).sort(
     (a: any, b: any) => (a.position ?? 0) - (b.position ?? 0)

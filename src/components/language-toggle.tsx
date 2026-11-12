@@ -4,12 +4,12 @@ import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 export function LanguageToggle({ className }: { className?: string }) {
-  const { locale, setLocale } = useI18n();
+  const { locale, setLocale, t } = useI18n();
 
   return (
     <div
       role="group"
-      aria-label="Language"
+      aria-label={t("nav.language")}
       data-testid="language-toggle"
       className={cn("flex items-center rounded-full border border-border p-0.5 font-mono text-[11px]", className)}
     >

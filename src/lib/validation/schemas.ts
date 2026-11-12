@@ -37,15 +37,23 @@ export const forgotSchema = z.object({
 export type ForgotValues = z.infer<typeof forgotSchema>;
 
 export const contactSchema = z.object({
-  name: z.string().min(2, "Nama minimal 2 karakter"),
-  email: z.string().min(1, required).email(emailMsg),
+  name: z.string().trim().min(2, "Nama minimal 2 karakter").max(100, "Nama maksimal 100 karakter"),
+  email: z.string().trim().min(1, required).email(emailMsg).max(254, "Email terlalu panjang"),
   phone: z
     .string()
-    .min(8, "Nomor minimal 8 digit")
-    .regex(/^[0-9+\-\s()]+$/, "Nomor tidak valid")
-    .optional()
-    .or(z.literal("")),
-  message: z.string().min(10, "Pesan minimal 10 karakter"),
+    .trim()
+    .pipe(
+      z.union([
+        z.literal(""),
+        z
+          .string()
+          .min(8, "Nomor minimal 8 digit")
+          .max(32, "Nomor terlalu panjang")
+          .regex(/^[0-9+\-\s()]+$/, "Nomor tidak valid"),
+      ])
+    )
+    .optional(),
+  message: z.string().trim().min(10, "Pesan minimal 10 karakter").max(5000, "Pesan maksimal 5000 karakter"),
 });
 export type ContactValues = z.infer<typeof contactSchema>;
 

@@ -40,9 +40,15 @@ export async function GET() {
       active: Boolean(promo.active),
     }));
 
-    await supabase.from("promotions").insert(seedData);
+    const { error: seedError } = await supabase.from("promotions").insert(seedData);
+    if (seedError) {
+      return NextResponse.json({ error: seedError.message }, { status: 500 });
+    }
 
     const recheck = await supabase.from("promotions").select("*").order("id");
+    if (recheck.error) {
+      return NextResponse.json({ error: recheck.error.message }, { status: 500 });
+    }
     promotions = recheck.data ?? [];
   }
 

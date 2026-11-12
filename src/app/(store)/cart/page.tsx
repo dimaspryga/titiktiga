@@ -189,8 +189,8 @@ function CartContent() {
               )}
               {totals.voucherDiscount > 0 && (
                 <div className="flex justify-between rounded-none border border-lime/40 bg-lime/10 px-3 py-2 text-sm" data-testid="cart-voucher-live-saving">
-                  <span className="font-medium text-lime">Harga setelah voucher</span>
-                  <span className="font-semibold text-lime">{formatIDR(totals.total)} <span className="ml-1 text-xs">(hemat {formatIDR(totals.voucherDiscount)})</span></span>
+                  <span className="font-medium text-lime">{t("cart.priceAfterVoucher")}</span>
+                  <span className="font-semibold text-lime">{formatIDR(totals.total)} <span className="ml-1 text-xs">({t("cart.voucherSavings", { amount: formatIDR(totals.voucherDiscount) })})</span></span>
                 </div>
               )}
               <div className="flex justify-between border-t border-border pt-4 text-lg font-semibold">

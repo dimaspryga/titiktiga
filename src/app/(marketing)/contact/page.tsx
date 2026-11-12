@@ -24,11 +24,22 @@ export default function ContactPage() {
     defaultValues: { name: "", email: "", phone: "", message: "" },
   });
 
-  const onSubmit = async (_values: ContactValues) => {
-    await new Promise((r) => setTimeout(r, 700));
-    setSent(true);
-    toast.success(t("form.sent"));
-    form.reset();
+  const onSubmit = async (values: ContactValues) => {
+    setSent(false);
+    try {
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
+      });
+      if (!response.ok) throw new Error("Contact message could not be delivered");
+
+      setSent(true);
+      toast.success(t("form.sent"));
+      form.reset();
+    } catch {
+      toast.error(t("form.sendError"));
+    }
   };
 
   const info = [

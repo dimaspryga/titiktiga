@@ -3,11 +3,15 @@ import supabase from "@/lib/supabase";
 import { seedContent } from "@/lib/mock/site";
 
 export async function GET() {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("site_content")
     .select("content")
     .eq("id", 1)
     .maybeSingle();
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 
   const stored = data?.content ?? {};
   const c = typeof stored === "string" ? JSON.parse(stored) : stored;

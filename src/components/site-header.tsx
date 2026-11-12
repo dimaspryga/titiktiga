@@ -1,30 +1,75 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Menu, Search, ShoppingBag, User, X } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowUpRight, Menu, Minus, Plus, Search, ShoppingBag, TicketPercent, User, X } from "lucide-react";
 import { Logo, LogoMark } from "@/components/logo";
 import { LanguageToggle } from "@/components/language-toggle";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Input } from "@/components/ui/input";
 import { useI18n } from "@/lib/i18n";
 import { useCartStore } from "@/lib/stores/cart";
+import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useSessionStore } from "@/lib/stores/session";
-import { usePromotions } from "@/lib/hooks";
-import { cn } from "@/lib/utils";
+import { useContent, usePromotions } from "@/lib/hooks";
+import { voucherRepo } from "@/lib/repositories";
+import { computeTotals, unitPrice } from "@/lib/services/pricing";
+import { cn, formatIDR } from "@/lib/utils";
+import { toast } from "sonner";
 
 export function SiteHeader() {
   const { t, tt } = useI18n();
   const pathname = usePathname();
   const items = useCartStore((s) => s.items);
   const session = useSessionStore((s) => s.session);
+  const setQuantity = useCartStore((s) => s.setQuantity);
+  const remove = useCartStore((s) => s.remove);
+  const voucherCode = useCartStore((s) => s.voucherCode);
+  const appliedVoucher = useCartStore((s) => s.appliedVoucher);
+  const setVoucher = useCartStore((s) => s.setVoucher);
+  const setAppliedVoucher = useCartStore((s) => s.setAppliedVoucher);
   const { data: promotions } = usePromotions();
+  const { data: content } = useContent();
   const [open, setOpen] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false);
+  const [voucherInput, setVoucherInput] = useState("");
   const [scrolled, setScrolled] = useState(false);
 
   const count = items.reduce((sum, i) => sum + i.quantity, 0);
+  const categorySlugs = [...new Set(items.map((item) => item.category).filter((category): category is string => Boolean(category)))];
+  const voucherQuery = useQuery({
+    queryKey: ["vouchers"],
+    queryFn: voucherRepo.list,
+    enabled: cartOpen && items.length > 0,
+    staleTime: 30_000,
+  });
+  const voucher =
+    appliedVoucher?.code.toUpperCase() === (voucherCode ?? "").toUpperCase()
+      ? appliedVoucher
+      : voucherQuery.data?.find((v) => v.code.toUpperCase() === (voucherCode ?? "").toUpperCase());
+  const totals = computeTotals(items, voucher, {
+    shippingFee: content?.store.shippingFee ?? 25000,
+    freeShippingThreshold: content?.store.freeShippingThreshold ?? 1000000,
+    categorySlugs,
+  });
   const announcement = promotions?.find((p) => p.placement === "announcement" && p.active);
+
+  const applyVoucher = async () => {
+    if (!voucherInput.trim()) return;
+    const result = await voucherRepo.check(voucherInput, totals.subtotal, categorySlugs);
+    if (result.ok) {
+      setVoucher(result.voucher.code);
+      setAppliedVoucher(result.voucher);
+      toast.success(t("cart.voucherApplied", { code: result.voucher.code }));
+      setVoucherInput("");
+      return;
+    }
+    toast.error(t(`voucher.error.${result.error}`));
+  };
 
   useEffect(() => setOpen(false), [pathname]);
   useEffect(() => {
@@ -35,7 +80,7 @@ export function SiteHeader() {
   }, []);
 
   const links = [
-    { href: "/products", label: t("nav.shop") },
+    { href: "/products", label: t("nav.market") },
     { href: "/pricing", label: t("nav.pricing") },
     { href: "/about", label: t("nav.about") },
     { href: "/services", label: t("nav.services") },
@@ -63,15 +108,19 @@ export function SiteHeader() {
           <Link href="/" aria-label="Titiktiga — Beranda" data-testid="header-logo-link">
             <Logo />
           </Link>
+          <p className="hidden items-center gap-2 border-l border-border pl-4 font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground xl:flex">
+            <span className="h-1.5 w-1.5 rounded-full bg-lime" aria-hidden="true" />
+            {tt(content?.hero.eyebrow)}
+          </p>
 
-          <nav className="hidden items-center gap-7 lg:flex" aria-label="Utama">
-            {links.map((link) => (
+          <nav className="hidden items-center gap-5 lg:flex" aria-label="Utama">
+            {links.filter((link) => ["/portfolio", "/services", "/products"].includes(link.href)).map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
                 data-testid={`nav-link-${link.href.slice(1) || "home"}`}
                 className={cn(
-                  "link-underline text-sm font-medium tracking-wide",
+                  "link-underline text-xs font-medium tracking-wide xl:text-sm",
                   pathname.startsWith(link.href) ? "text-foreground" : "text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -80,32 +129,189 @@ export function SiteHeader() {
             ))}
           </nav>
 
+          <form action="/products" role="search" className="hidden min-w-36 max-w-48 flex-1 lg:block">
+            <label className="relative block">
+              <span className="sr-only">{t("products.searchPlaceholder")}</span>
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              <input
+                type="search"
+                name="q"
+                placeholder={t("products.searchPlaceholder")}
+                className="h-10 w-full rounded-full border border-border bg-card/60 pl-9 pr-4 text-xs outline-none transition-colors placeholder:text-muted-foreground focus:border-foreground"
+                data-testid="header-search-input"
+              />
+            </label>
+          </form>
+
           <div className="flex items-center gap-1 md:gap-2">
             <Link
               href="/products"
               aria-label={t("nav.shop")}
-              className="hidden h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-accent md:flex"
+              className="hidden h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-accent md:flex lg:hidden"
             >
               <Search className="h-[18px] w-[18px]" />
             </Link>
             <LanguageToggle />
-            <ThemeToggle />
-            <Link
-              href="/cart"
-              aria-label={t("nav.cart")}
-              data-testid="header-cart-link"
-              className="relative flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-accent"
-            >
-              <ShoppingBag className="h-[18px] w-[18px]" />
-              {count > 0 && (
-                <span
-                  data-testid="cart-badge-count"
-                  className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-lime px-1 font-mono text-[10px] font-semibold text-lime-foreground"
+            <div className="hidden sm:block">
+              <ThemeToggle />
+            </div>
+            <Sheet open={cartOpen} onOpenChange={setCartOpen}>
+              <SheetTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={t("nav.cart")}
+                  data-testid="header-cart-link"
+                  className="relative flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-accent"
                 >
-                  {count}
-                </span>
-              )}
-            </Link>
+                  <ShoppingBag className="h-[18px] w-[18px]" />
+                  {count > 0 && (
+                    <span
+                      data-testid="cart-badge-count"
+                      className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-lime px-1 font-mono text-[10px] font-semibold text-lime-foreground"
+                    >
+                      {count}
+                    </span>
+                  )}
+                </button>
+              </SheetTrigger>
+              <SheetContent side="right" className="flex w-[min(100vw,28rem)] flex-col rounded-l-2xl border-l border-border p-0">
+                <div className="border-b border-border px-6 py-6">
+                  <SheetTitle className="font-display text-3xl font-medium">{t("cart.title")}</SheetTitle>
+                  <SheetDescription className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                    {t("cart.itemCount", { count })}
+                  </SheetDescription>
+                  <Link
+                    href="/cart"
+                    onClick={() => setCartOpen(false)}
+                    className="mt-4 inline-flex h-9 items-center gap-2 rounded-full border border-border px-4 text-xs font-medium transition-colors hover:bg-accent"
+                    data-testid="drawer-cart-page-link"
+                  >
+                    {t("cart.viewFullCart")}
+                    <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
+                  </Link>
+                </div>
+                {items.length > 0 ? (
+                  <>
+                    <ul className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-6">
+                      {items.map((item) => (
+                        <li key={item.productId} className="flex gap-4 border-b border-border pb-5">
+                          <Link href={`/products/${item.slug}`} onClick={() => setCartOpen(false)} className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-muted">
+                            {item.image && (
+                              <Image src={item.image} alt={item.name} fill sizes="80px" className="object-cover" />
+                            )}
+                          </Link>
+                          <div className="min-w-0 flex-1">
+                            <Link href={`/products/${item.slug}`} onClick={() => setCartOpen(false)} className="line-clamp-2 font-medium hover:underline">
+                              {item.name}
+                            </Link>
+                            <p className="mt-1 font-mono text-xs">{formatIDR(unitPrice(item.price, item.discountPercent))}</p>
+                            <div className="mt-3 flex items-center justify-between">
+                              <div className="flex items-center rounded-full border border-border">
+                                <button
+                                  type="button"
+                                  aria-label={`${t("cart.quantity")} − ${item.name}`}
+                                  onClick={() => setQuantity(item.productId, item.quantity - 1)}
+                                  className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-accent"
+                                >
+                                  <Minus className="h-3 w-3" />
+                                </button>
+                                <span className="w-7 text-center font-mono text-xs">{item.quantity}</span>
+                                <button
+                                  type="button"
+                                  aria-label={`${t("cart.quantity")} + ${item.name}`}
+                                  onClick={() => setQuantity(item.productId, item.quantity + 1)}
+                                  className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-accent"
+                                >
+                                  <Plus className="h-3 w-3" />
+                                </button>
+                              </div>
+                              <button type="button" onClick={() => remove(item.productId)} className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+                                {t("cart.remove")}
+                              </button>
+                            </div>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="border-t border-border bg-card px-6 py-5">
+                      <div className="mb-4 border-b border-border pb-4">
+                        <p className="mb-2 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                          <TicketPercent className="h-4 w-4" /> {t("cart.voucher")}
+                        </p>
+                        {voucherCode && voucher ? (
+                          <div className="flex items-center justify-between gap-3 border border-lime bg-lime/10 px-3 py-2" data-testid="drawer-voucher-applied">
+                            <span className="min-w-0 truncate text-xs font-medium">{t("cart.voucherApplied", { code: voucher.code })}</span>
+                            <button
+                              type="button"
+                              data-testid="drawer-voucher-remove"
+                              onClick={() => setVoucher(null)}
+                              className="shrink-0 font-mono text-[10px] uppercase tracking-widest underline"
+                            >
+                              {t("cart.voucherRemove")}
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex min-w-0 gap-2">
+                            <Input
+                              value={voucherInput}
+                              onChange={(event) => setVoucherInput(event.target.value.toUpperCase())}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                  event.preventDefault();
+                                  void applyVoucher();
+                                }
+                              }}
+                              placeholder={t("cart.voucherPlaceholder")}
+                              data-testid="drawer-voucher-input"
+                              className="h-10 min-w-0 rounded-full font-mono text-xs"
+                            />
+                            <button
+                              type="button"
+                              data-testid="drawer-voucher-apply"
+                              onClick={() => void applyVoucher()}
+                              className="shrink-0 rounded-full border border-border px-4 text-xs font-medium transition-colors hover:bg-accent"
+                            >
+                              {t("cart.voucherApply")}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      <div className="mb-4 space-y-2 font-mono text-xs">
+                        <div className="flex items-center justify-between">
+                          <span>{t("cart.subtotal")}</span>
+                          <span>{formatIDR(totals.subtotal)}</span>
+                        </div>
+                        {totals.voucherDiscount > 0 && (
+                          <div className="flex items-center justify-between text-lime">
+                            <span>{t("cart.voucher")}</span>
+                            <span>−{formatIDR(totals.voucherDiscount)}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between border-t border-border pt-2 font-semibold">
+                          <span>{t("cart.total")}</span>
+                          <span>{formatIDR(totals.total)}</span>
+                        </div>
+                      </div>
+                      <Link href="/products" onClick={() => setCartOpen(false)} className="flex h-12 items-center justify-center rounded-full bg-foreground px-6 text-sm font-semibold text-background transition-transform hover:-translate-y-0.5">
+                        {t("cart.continue")}
+                      </Link>
+                      <Link href="/checkout" onClick={() => setCartOpen(false)} className="mt-2 flex h-12 items-center justify-center rounded-full bg-lime px-6 text-sm font-semibold text-lime-foreground transition-transform hover:-translate-y-0.5">
+                        {t("cart.checkout")}
+                      </Link>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
+                    <ShoppingBag className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
+                    <h3 className="mt-4 font-display text-2xl">{t("cart.empty.title")}</h3>
+                    <p className="mt-2 text-sm text-muted-foreground">{t("cart.empty.body")}</p>
+                    <Link href="/products" onClick={() => setCartOpen(false)} className="mt-6 rounded-full bg-lime px-6 py-3 text-sm font-semibold text-lime-foreground">
+                      {t("cart.empty.cta")}
+                    </Link>
+                  </div>
+                )}
+              </SheetContent>
+            </Sheet>
             <Link
               href={session ? "/account" : "/login"}
               aria-label={session ? t("nav.account") : t("nav.login")}
@@ -113,6 +319,13 @@ export function SiteHeader() {
               className="hidden h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-accent md:flex"
             >
               <User className="h-[18px] w-[18px]" />
+            </Link>
+            <Link
+              href="/contact"
+              className="hidden h-10 items-center gap-2 rounded-full bg-lime px-4 text-xs font-semibold text-lime-foreground transition-transform hover:-translate-y-0.5 hover:bg-lime/90 lg:inline-flex"
+              data-testid="header-contact-cta"
+            >
+              {t("nav.contact")} <ArrowUpRight className="h-3.5 w-3.5" />
             </Link>
             <button
               type="button"
@@ -158,7 +371,10 @@ export function SiteHeader() {
             </nav>
             <div className="mt-10 flex flex-col gap-4">
               <div className="flex items-center justify-between">
-                <LanguageToggle />
+                <div className="flex items-center gap-2">
+                  <LanguageToggle />
+                  <ThemeToggle />
+                </div>
                 <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
                   Titiktiga Studio — {new Date().getFullYear()}
                 </span>

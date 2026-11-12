@@ -31,7 +31,7 @@ export default function ProductsPage() {
 
 function CatalogSkeleton() {
   return (
-    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
       {Array.from({ length: 8 }).map((_, i) => (
         <Skeleton key={i} className="aspect-[4/5] w-full" />
       ))}
@@ -180,6 +180,43 @@ function Catalog() {
         </p>
       </div>
 
+      <nav
+        aria-label={t("filters.category")}
+        className="no-scrollbar mb-8 flex gap-2 overflow-x-auto border-y border-border py-3"
+        data-testid="catalog-category-pills"
+      >
+        <button
+          type="button"
+          aria-pressed={!query.category}
+          onClick={() => updateParams({ category: null, page: null })}
+          className={`shrink-0 rounded-full border px-4 py-2 text-xs font-medium transition-colors ${
+            !query.category
+              ? "border-foreground bg-foreground text-background"
+              : "border-border bg-card text-muted-foreground hover:border-foreground/40 hover:text-foreground"
+          }`}
+        >
+          {t("admin.filter.status") === "All statuses" ? "All" : "Semua"}
+        </button>
+        {(categories ?? []).map((category) => {
+          const active = query.category === category.slug;
+          return (
+            <button
+              key={category.slug}
+              type="button"
+              aria-pressed={active}
+              onClick={() => updateParams({ category: active ? null : category.slug, page: null })}
+              className={`shrink-0 rounded-full border px-4 py-2 text-xs font-medium transition-colors ${
+                active
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-border bg-card text-muted-foreground hover:border-foreground/40 hover:text-foreground"
+              }`}
+            >
+              {tt(category.name)}
+            </button>
+          );
+        })}
+      </nav>
+
       <div className="grid gap-10 lg:grid-cols-[240px_1fr]">
         <aside className="hidden lg:block">
           <div className="sticky top-28">{filtersPanel}</div>
@@ -266,7 +303,7 @@ function Catalog() {
 
           {data && data.items.length > 0 && (
             <>
-              <div className="grid gap-x-6 gap-y-12 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" data-testid="products-grid">
+              <div className="grid items-stretch gap-x-6 gap-y-12 sm:grid-cols-2 xl:grid-cols-3" data-testid="products-grid">
                 {data.items.map((product, i) => (
                   <ProductCard key={product.id} product={product} priority={i < 4} />
                 ))}

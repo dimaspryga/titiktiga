@@ -8,10 +8,7 @@ interface SessionState {
   logout: () => void;
 }
 
-/**
- * DEMO ONLY — session mock di localStorage. Pada produksi gunakan
- * cookie HttpOnly + Secure + SameSite yang diterbitkan server.
- */
+/** Client-side session cache for UI state; API access is authorized by the server cookie. */
 export const useSessionStore = create<SessionState>()(
   persist(
     (set) => ({

@@ -23,6 +23,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { useI18n } from "@/lib/i18n";
 import { useSessionStore } from "@/lib/stores/session";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 const NAV = [
   { href: "/admin/dashboard", key: "admin.dashboard", icon: LayoutDashboard },
@@ -46,7 +47,12 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   const current = NAV.find((n) => pathname === n.href || pathname.startsWith(n.href + "/"));
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    const response = await fetch("/api/auth/logout", { method: "POST" }).catch(() => null);
+    if (!response?.ok) {
+      toast.error(t("auth.error.network"));
+      return;
+    }
     logout();
     router.push("/");
   };

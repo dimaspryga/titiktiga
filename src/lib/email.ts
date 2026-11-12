@@ -16,18 +16,23 @@ function escapeHtml(value: string) {
   );
 }
 
-export async function sendVerificationEmail(email: string, name: string, token: string) {
+function createMailTransporter() {
   const host = optionalEnv("SMTP_HOST");
   const user = optionalEnv("SMTP_USER");
   const pass = optionalEnv("SMTP_PASS");
   if (!host || !user || !pass) throw new Error("Konfigurasi SMTP belum lengkap");
 
-  const transporter = nodemailer.createTransport({
+  return nodemailer.createTransport({
     host,
     port: Number(process.env.SMTP_PORT ?? 587),
     secure: process.env.SMTP_SECURE === "true",
     auth: { user, pass: pass.replace(/\s/g, "") },
   });
+}
+
+export async function sendVerificationEmail(email: string, name: string, token: string) {
+  const user = optionalEnv("SMTP_USER");
+  const transporter = createMailTransporter();
   const baseUrl = applicationUrl();
   const url = `${baseUrl}/api/auth/verify-email?token=${encodeURIComponent(token)}`;
   let branding = { logo: "", footer: "Tim Titiktiga", accent: "#dfff00" };
@@ -56,17 +61,8 @@ export async function sendVerificationEmail(email: string, name: string, token: 
 }
 
 export async function sendPasswordResetEmail(email: string, name: string, token: string) {
-  const host = optionalEnv("SMTP_HOST");
   const user = optionalEnv("SMTP_USER");
-  const pass = optionalEnv("SMTP_PASS");
-  if (!host || !user || !pass) throw new Error("Konfigurasi SMTP belum lengkap");
-
-  const transporter = nodemailer.createTransport({
-    host,
-    port: Number(process.env.SMTP_PORT ?? 587),
-    secure: process.env.SMTP_SECURE === "true",
-    auth: { user, pass: pass.replace(/\s/g, "") },
-  });
+  const transporter = createMailTransporter();
   const url = `${applicationUrl()}/api/auth/password?token=${encodeURIComponent(token)}`;
 
   await transporter.sendMail({
@@ -74,5 +70,33 @@ export async function sendPasswordResetEmail(email: string, name: string, token:
     to: email,
     subject: "Verifikasi perubahan kata sandi Titiktiga",
     html: `<div style="background:#f4f4ef;padding:32px;font-family:Arial,sans-serif;color:#171717"><table role="presentation" style="max-width:560px;width:100%;margin:auto;background:#fff"><tr><td style="padding:28px;border-bottom:1px solid #ddd"><strong style="font-size:24px;letter-spacing:-1px">titiktiga<span style="color:#dfff00">.</span></strong></td></tr><tr><td style="padding:36px 28px"><p>Halo ${escapeHtml(name)},</p><p>Kami menerima permintaan untuk mengubah kata sandi akun Titiktiga Anda. Klik tombol berikut untuk mengonfirmasi perubahan.</p><p style="margin:28px 0"><a href="${url}" style="display:inline-block;background:#dfff00;color:#171717;text-decoration:none;padding:14px 22px;font-weight:bold">Verifikasi dan ubah kata sandi</a></p><p style="font-size:12px;color:#666">Atau buka: ${escapeHtml(url)}</p><p style="font-size:12px;color:#666">Tautan berlaku selama 1 jam. Jika Anda tidak meminta perubahan ini, abaikan email ini.</p></td></tr><tr><td style="padding:20px 28px;background:#171717;color:#fff;font-size:12px">Tim Titiktiga</td></tr></table></div>`,
+  });
+}
+
+export async function sendContactEmail({
+  to,
+  name,
+  email,
+  phone,
+  message,
+}: {
+  to: string;
+  name: string;
+  email: string;
+  phone: string;
+  message: string;
+}) {
+  const safeName = escapeHtml(name);
+  const safeEmail = escapeHtml(email);
+  const safePhone = escapeHtml(phone || "—");
+  const safeMessage = escapeHtml(message).replace(/\r?\n/g, "<br>");
+
+  await createMailTransporter().sendMail({
+    from: optionalEnv("SMTP_FROM", optionalEnv("SMTP_USER")),
+    to,
+    replyTo: email,
+    subject: "Pesan baru melalui website Titiktiga",
+    text: `Nama: ${name}\nEmail: ${email}\nTelepon: ${phone || "—"}\n\nPesan:\n${message}`,
+    html: `<div style="font-family:Arial,sans-serif;line-height:1.6;color:#171717"><h2>Pesan baru melalui website Titiktiga</h2><p><strong>Nama:</strong> ${safeName}</p><p><strong>Email:</strong> ${safeEmail}</p><p><strong>Telepon:</strong> ${safePhone}</p><hr /><p>${safeMessage}</p></div>`,
   });
 }

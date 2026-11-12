@@ -3,11 +3,15 @@ import supabase from "@/lib/supabase";
 import { seedEngagement } from "@/lib/mock/engage";
 
 export async function GET() {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("engagement_content")
     .select("content")
     .eq("id", 1)
     .maybeSingle();
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 
   const stored = data?.content ?? {};
   const content = typeof stored === "string" ? JSON.parse(stored) : stored;
@@ -18,11 +22,15 @@ export async function GET() {
 export async function PATCH(req: NextRequest) {
   const patch = await req.json();
 
-  const { data } = await supabase
+  const { data, error: readError } = await supabase
     .from("engagement_content")
     .select("content")
     .eq("id", 1)
     .maybeSingle();
+
+  if (readError) {
+    return NextResponse.json({ error: readError.message }, { status: 500 });
+  }
 
   const stored = data?.content ?? {};
   const current = typeof stored === "string" ? JSON.parse(stored) : stored;

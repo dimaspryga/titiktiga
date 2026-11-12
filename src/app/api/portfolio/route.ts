@@ -27,7 +27,7 @@ export async function GET() {
   let projects = initialProjects;
   if (!projects || projects.length === 0) {
     for (const project of seedPortfolio) {
-      const { data: createdProject } = await supabase
+      const { data: createdProject, error: createError } = await supabase
         .from("portfolio_projects")
         .insert({
           slug: project.slug,
@@ -42,13 +42,33 @@ export async function GET() {
         .select()
         .single();
 
+      if (createError || !createdProject) {
+        return NextResponse.json(
+          { error: createError?.message ?? "Gagal menambahkan data portofolio awal" },
+          { status: 500 }
+        );
+      }
+
       if (createdProject && project.images?.length) {
         const images = project.images.map((url: string, position: number) => ({
           project_id: createdProject.id,
           url,
           position,
         }));
-        await supabase.from("portfolio_images").insert(images);
+        const { error: imagesError } = await supabase.from("portfolio_images").insert(images);
+        if (imagesError) {
+          const { error: cleanupError } = await supabase
+            .from("portfolio_projects")
+            .delete()
+            .eq("id", createdProject.id);
+          return NextResponse.json(
+            {
+              error: imagesError.message,
+              ...(cleanupError && { cleanupError: cleanupError.message }),
+            },
+            { status: 500 }
+          );
+        }
       }
     }
 
@@ -57,6 +77,10 @@ export async function GET() {
       .select("*, portfolio_images(url, position)")
       .order("year", { ascending: false })
       .order("title", { ascending: true });
+
+    if (recheck.error) {
+      return NextResponse.json({ error: recheck.error.message }, { status: 500 });
+    }
 
     projects = recheck.data ?? [];
   }
@@ -109,7 +133,17 @@ export async function POST(req: NextRequest) {
       url,
       position,
     }));
-    await supabase.from("portfolio_images").insert(images);
+    const { error: imagesError } = await supabase.from("portfolio_images").insert(images);
+    if (imagesError) {
+      const { error: cleanupError } = await supabase.from("portfolio_projects").delete().eq("id", project.id);
+      return NextResponse.json(
+        {
+          error: imagesError.message,
+          ...(cleanupError && { cleanupError: cleanupError.message }),
+        },
+        { status: 500 }
+      );
+    }
   }
 
   return NextResponse.json({

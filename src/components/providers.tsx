@@ -7,7 +7,6 @@ import { getQueryClient } from "@/lib/query-client";
 import { LocaleProvider } from "@/lib/i18n";
 import { useCartStore } from "@/lib/stores/cart";
 import { useSessionStore } from "@/lib/stores/session";
-import { useMockDb } from "@/lib/repositories/db";
 import { Toaster } from "sonner";
 import { PageTransition } from "@/components/page-transition";
 
@@ -17,7 +16,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     useCartStore.persist?.rehydrate?.();
     useSessionStore.persist?.rehydrate?.();
-    useMockDb.persist?.rehydrate?.();
   }, []);
 
   return (

@@ -27,44 +27,6 @@ function mapVoucher(r: any) {
   };
 }
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  if (id !== "check") return NextResponse.json({ error: "Endpoint voucher tidak ditemukan" }, { status: 404 });
-
-  let input: { code?: string; subtotal?: number; categories?: string[] };
-  try {
-    input = await req.json();
-  } catch {
-    return NextResponse.json({ ok: false, error: "invalid" });
-  }
-
-  const { code, subtotal = 0, categories = [] } = input;
-  const uppercaseCode = String(code ?? "").trim().toUpperCase();
-
-  const { data: voucher } = await supabase
-    .from("vouchers")
-    .select("*")
-    .eq("code", uppercaseCode)
-    .maybeSingle();
-
-  if (!voucher) return NextResponse.json({ ok: false, error: "invalid" });
-  if (!Boolean(voucher.active)) return NextResponse.json({ ok: false, error: "inactive" });
-
-  const today = new Date().toISOString().slice(0, 10);
-  const startDate = new Date(voucher.start_date).toISOString().slice(0, 10);
-  const expiryDate = new Date(voucher.expiry_date).toISOString().slice(0, 10);
-  if (today < startDate || today > expiryDate) return NextResponse.json({ ok: false, error: "expired" });
-  if (Number(voucher.used_count) >= Number(voucher.usage_limit || Infinity)) return NextResponse.json({ ok: false, error: "limit" });
-  if (Number(subtotal) < Number(voucher.min_purchase)) return NextResponse.json({ ok: false, error: "min-purchase" });
-
-  const eligible = parseJson(voucher.eligible_categories);
-  if (Array.isArray(eligible) && eligible.length > 0 && !categories.some((cat: string) => eligible.includes(cat))) {
-    return NextResponse.json({ ok: false, error: "category" });
-  }
-
-  return NextResponse.json({ ok: true, voucher: mapVoucher(voucher) });
-}
-
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const input = await req.json();
@@ -88,11 +50,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     .update(updates)
     .eq("id", id)
     .select()
-    .single();
+    .maybeSingle();
 
-  if (error || !data) {
-    return NextResponse.json({ error: error?.message ?? "Voucher tidak ditemukan" }, { status: 404 });
-  }
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!data) return NextResponse.json({ error: "Voucher tidak ditemukan" }, { status: 404 });
 
   return NextResponse.json(mapVoucher(data));
 }

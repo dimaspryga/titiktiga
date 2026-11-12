@@ -355,7 +355,7 @@ function CheckoutContent() {
                 </h2>
                 {isMidtransLive && (
                   <Badge variant="outline" className="gap-1 border-lime text-[10px] text-lime font-mono">
-                    <CheckCircle2 className="h-3 w-3" /> Pembayaran Otomatis
+                    <CheckCircle2 className="h-3 w-3" /> {t("checkout.payment.autoBadge")}
                   </Badge>
                 )}
               </div>
@@ -378,26 +378,26 @@ function CheckoutContent() {
                     <Label htmlFor="pay-midtrans" className="flex-1 cursor-pointer">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <span className="flex items-center gap-2 text-sm font-semibold">
-                          <WalletCards className="h-4 w-4 text-lime" /> Pembayaran Online (Midtrans)
+                          <WalletCards className="h-4 w-4 text-lime" /> {t("checkout.payment.online")}
                         </span>
                         <span className="rounded bg-lime/20 px-2 py-0.5 font-mono text-[10px] text-lime">
-                          Instant &amp; Otomatis
+                          {t("checkout.payment.instant")}
                         </span>
                       </div>
                       <span className="mt-1 block text-xs text-muted-foreground">
-                        Bayar instan via QRIS (GoPay, ShopeePay, BCA), Virtual Account (BCA, Mandiri, BNI, BRI), atau Kartu Kredit/Debit.
+                        {t("checkout.payment.onlineDescription")}
                       </span>
 
                       {/* Visual Channel Icons */}
                       <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
                         <span className="inline-flex items-center gap-1 border border-border bg-card px-2 py-1 font-mono">
-                          <QrCode className="h-3 w-3 text-lime" /> QRIS / E-Wallet
+                          <QrCode className="h-3 w-3 text-lime" /> {t("checkout.payment.qris")}
                         </span>
                         <span className="inline-flex items-center gap-1 border border-border bg-card px-2 py-1 font-mono">
-                          <Building2 className="h-3 w-3 text-lime" /> Virtual Account
+                          <Building2 className="h-3 w-3 text-lime" /> {t("checkout.payment.virtualAccount")}
                         </span>
                         <span className="inline-flex items-center gap-1 border border-border bg-card px-2 py-1 font-mono">
-                          <CreditCard className="h-3 w-3 text-lime" /> Kartu Kredit / Debit
+                          <CreditCard className="h-3 w-3 text-lime" /> {t("checkout.payment.card")}
                         </span>
                       </div>
                     </Label>
@@ -408,16 +408,16 @@ function CheckoutContent() {
                       {isMidtransLive ? (
                         <p className="flex items-center gap-2 font-mono text-[11px] text-lime">
                           <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-                          Popup pembayaran resmi Midtrans akan terbuka secara otomatis saat Anda mengklik tombol Buat Pesanan.
+                          {t("checkout.payment.popupNotice")}
                         </p>
                       ) : (
                         <div className="rounded border border-border bg-card p-3 text-xs leading-relaxed text-muted-foreground">
                           <p className="flex items-start gap-2 font-medium text-foreground">
                             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-lime" />
-                            Layanan Pembayaran Otomatis
+                            {t("checkout.payment.serviceTitle")}
                           </p>
                           <p className="mt-1 text-[11px]">
-                            Metode pembayaran ini memproses transaksi secara real-time. Pesanan akan otomatis terverifikasi setelah pembayaran selesai.
+                            {t("checkout.payment.serviceDescription")}
                           </p>
                         </div>
                       )}
@@ -438,11 +438,11 @@ function CheckoutContent() {
                     <Label htmlFor="pay-transfer" className="flex-1 cursor-pointer">
                       <div className="flex items-center justify-between">
                         <span className="flex items-center gap-2 text-sm font-semibold">
-                          <CreditCard className="h-4 w-4" /> Transfer Bank
+                          <CreditCard className="h-4 w-4" /> {t("checkout.payment.transfer")}
                         </span>
                       </div>
                       <span className="mt-1 block text-xs text-muted-foreground">
-                        Transfer ke rekening bank toko dan unggah bukti transfer untuk verifikasi.
+                        {t("checkout.payment.transferDescription")}
                       </span>
                     </Label>
                   </div>
@@ -450,7 +450,7 @@ function CheckoutContent() {
                   {paymentMethod === "transfer" && (
                     <div className="mt-4 space-y-2 border-t border-border/80 pt-3">
                       <Label htmlFor="payment-proof" className="text-xs">
-                        Bukti transfer (JPG/PNG/WebP, maks. 5 MB)
+                        {t("checkout.payment.proofLabel")}
                       </Label>
                       <Input
                         id="payment-proof"
@@ -533,8 +533,8 @@ function CheckoutContent() {
                   className="flex justify-between rounded-none border border-lime/40 bg-lime/10 px-3 py-2"
                   data-testid="checkout-voucher-live-saving"
                 >
-                  <span className="font-medium text-lime">Harga setelah voucher</span>
-                  <span className="font-semibold text-lime">Hemat {formatIDR(totals.voucherDiscount)}</span>
+                  <span className="font-medium text-lime">{t("cart.priceAfterVoucher")}</span>
+                  <span className="font-semibold text-lime">{t("cart.voucherSavings", { amount: formatIDR(totals.voucherDiscount) })}</span>
                 </div>
               )}
               <div className="flex justify-between border-t border-border pt-4 text-lg font-semibold">
@@ -562,9 +562,9 @@ function CheckoutContent() {
                 <WalletCards className="h-5 w-5" />
               </span>
               <div>
-                <DialogTitle className="font-display text-xl">Pesanan Berhasil Dibuat</DialogTitle>
+                <DialogTitle className="font-display text-xl">{t("checkout.success.confirmedTitle")}</DialogTitle>
                 <DialogDescription className="text-xs">
-                  Detail pesanan Anda telah tersimpan
+                  {t("checkout.success.saved")}
                 </DialogDescription>
               </div>
             </div>
@@ -573,21 +573,21 @@ function CheckoutContent() {
           <div className="space-y-4 py-2 text-sm">
             <div className="border border-border bg-card p-4 space-y-2">
               <div className="flex justify-between text-xs font-mono">
-                <span className="text-muted-foreground">Nomor Pesanan:</span>
+                <span className="text-muted-foreground">{t("checkout.success.number")}:</span>
                 <span className="font-bold text-foreground">{pendingOrder?.number}</span>
               </div>
               <div className="flex justify-between text-xs font-mono">
-                <span className="text-muted-foreground">Total Tagihan:</span>
+                <span className="text-muted-foreground">{t("checkout.success.total")}</span>
                 <span className="font-bold text-lime">{pendingOrder ? formatIDR(pendingOrder.total) : "—"}</span>
               </div>
               <div className="flex justify-between text-xs font-mono">
-                <span className="text-muted-foreground">Metode:</span>
-                <span className="text-foreground">Midtrans (QRIS, VA, E-Wallet, Kartu)</span>
+                <span className="text-muted-foreground">{t("checkout.success.method")}</span>
+                <span className="text-foreground">{t("checkout.success.midtransMethod")}</span>
               </div>
             </div>
 
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Pesanan telah tercatat di sistem dengan nomor <strong>{pendingOrder?.number}</strong>. Anda dapat melihat detail rincian tagihan dan status pesanan melalui halaman pesanan.
+              {t("checkout.success.recorded", { number: pendingOrder?.number ?? "" })}
             </p>
           </div>
 
@@ -597,7 +597,7 @@ function CheckoutContent() {
               onClick={handleFinish}
               className="rounded-none bg-lime font-semibold text-lime-foreground hover:bg-lime/85 text-xs w-full sm:w-auto"
             >
-              Lihat Rincian Pesanan
+              {t("checkout.success.viewDetails")}
             </Button>
           </DialogFooter>
         </DialogContent>

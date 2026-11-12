@@ -19,11 +19,10 @@ export function Reveal({
   delay?: number;
   y?: number;
 }) {
-  const reduce = useReducedMotion();
   return (
     <motion.div
-      className={className}
-      initial={{ opacity: 0, y: reduce ? 0 : y }}
+      className={cn("motion-reveal", className)}
+      initial={{ opacity: 0, y }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.15 }}
       transition={{ duration: 0.7, delay, ease: EASE_SNAPPY }}
@@ -44,12 +43,11 @@ export function LineMask({
   className?: string;
   innerClassName?: string;
 }) {
-  const reduce = useReducedMotion();
   return (
     <span className={cn("block overflow-hidden", className)}>
       <motion.span
-        className={cn("block", innerClassName)}
-        initial={{ y: reduce ? "0%" : "112%" }}
+        className={cn("motion-line-mask block", innerClassName)}
+        initial={{ y: "112%" }}
         animate={{ y: "0%" }}
         transition={{ duration: 0.9, delay, ease: EASE_EDITORIAL }}
       >
@@ -76,7 +74,7 @@ export function Stagger({ children, className }: { children: React.ReactNode; cl
       initial="hidden"
       whileInView="show"
       viewport={{ once: true, amount: 0.15 }}
-      className={className}
+      className={cn("motion-stagger", className)}
     >
       {children}
     </motion.div>
@@ -85,7 +83,7 @@ export function Stagger({ children, className }: { children: React.ReactNode; cl
 
 export function StaggerItem({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <motion.div variants={staggerItem} className={className}>
+    <motion.div variants={staggerItem} className={cn("motion-stagger-item", className)}>
       {children}
     </motion.div>
   );
@@ -146,8 +144,8 @@ export function Magnetic({
   return (
     <motion.div
       ref={ref}
-      style={reduce ? undefined : { x, y }}
-      className={cn("inline-block", className)}
+      style={{ x, y }}
+      className={cn("motion-magnetic inline-block", className)}
       onMouseMove={(e) => {
         if (reduce || !ref.current) return;
         const rect = ref.current.getBoundingClientRect();
@@ -180,14 +178,13 @@ export function ParallaxImg({
   priority?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const reduce = useReducedMotion();
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end start"] });
-  const y = useTransform(scrollYProgress, [0, 1], reduce ? ["0%", "0%"] : [`-${range}%`, `${range}%`]);
+  const y = useTransform(scrollYProgress, [0, 1], [`-${range}%`, `${range}%`]);
 
   return (
-    <div ref={ref} className={cn("relative overflow-hidden", className)}>
+    <div ref={ref} className={cn("motion-parallax relative overflow-hidden", className)}>
       {src ? (
-        <motion.div style={{ y }} className="absolute inset-x-0 -top-[12%] h-[124%]">
+        <motion.div style={{ y }} className="motion-parallax-layer absolute inset-x-0 -top-[12%] h-[124%]">
           <Image src={src} alt={alt} fill priority={priority} sizes={sizes} className="object-cover" />
         </motion.div>
       ) : (

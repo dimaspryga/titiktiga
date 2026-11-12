@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "crypto";
+import { hash } from "bcryptjs";
 import { NextRequest, NextResponse } from "next/server";
 import { applicationUrl } from "@/lib/runtime-env";
 import { sendPasswordResetEmail } from "@/lib/email";
@@ -9,9 +10,9 @@ const genericResponse = { requested: true };
 export async function POST(req: NextRequest) {
   const input = await req.json().catch(() => null);
   const email = String(input?.email ?? "").trim().toLowerCase();
-  const passwordHash = String(input?.passwordHash ?? "");
+  const password = String(input?.password ?? "");
 
-  if (!/^\S+@\S+\.\S+$/.test(email) || !/^sha256:[a-f0-9]{64}$/i.test(passwordHash)) {
+  if (!/^\S+@\S+\.\S+$/.test(email) || password.length < 8 || password.length > 128) {
     return NextResponse.json({ error: "auth.error.invalid" }, { status: 400 });
   }
 
@@ -28,6 +29,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(genericResponse);
   }
 
+  const passwordHash = await hash(password, 12);
   const token = randomBytes(32).toString("hex");
   const { error: tokenError } = await supabase
     .from("password_reset_tokens")

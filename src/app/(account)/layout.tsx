@@ -58,7 +58,12 @@ function AccountShell({ children }: { children: React.ReactNode }) {
             <button
               type="button"
               data-testid="account-logout-button"
-              onClick={() => {
+              onClick={async () => {
+                const response = await fetch("/api/auth/logout", { method: "POST" }).catch(() => null);
+                if (!response?.ok) {
+                  toast.error(t("auth.error.network"));
+                  return;
+                }
                 logout();
                 toast.success(t("auth.logout.success"));
                 router.push("/");

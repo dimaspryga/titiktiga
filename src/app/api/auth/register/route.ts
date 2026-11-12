@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHash, randomBytes } from "crypto";
+import { hash } from "bcryptjs";
 import supabase from "@/lib/supabase";
 import { sendVerificationEmail } from "@/lib/email";
 
@@ -7,17 +8,28 @@ export async function POST(req: NextRequest) {
   const input = await req.json();
   const name = String(input.name ?? "").trim();
   const email = String(input.email ?? "").trim().toLowerCase();
-  const passwordHash = String(input.passwordHash ?? "");
+  const password = String(input.password ?? "");
 
-  if (!name || !/^\S+@\S+\.\S+$/.test(email) || !passwordHash.startsWith("sha256:")) {
+  if (
+    name.length < 2 ||
+    name.length > 120 ||
+    !/^\S+@\S+\.\S+$/.test(email) ||
+    password.length < 8 ||
+    password.length > 128
+  ) {
     return NextResponse.json({ error: "auth.error.invalid" }, { status: 400 });
   }
+  const passwordHash = await hash(password, 12);
 
-  const { data: existing } = await supabase
+  const { data: existing, error: lookupError } = await supabase
     .from("users")
     .select("id")
     .eq("email", email)
     .maybeSingle();
+
+  if (lookupError) {
+    return NextResponse.json({ error: lookupError.message }, { status: 500 });
+  }
 
   if (existing) {
     return NextResponse.json({ error: "auth.error.exists" }, { status: 409 });

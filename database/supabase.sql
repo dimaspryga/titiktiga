@@ -227,7 +227,7 @@ INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_typ
 VALUES (
   'payment-proofs',
   'payment-proofs',
-  TRUE,
+  FALSE,
   5242880,
   ARRAY['image/jpeg', 'image/png', 'image/webp']
 )
@@ -368,8 +368,8 @@ ON CONFLICT (id) DO NOTHING;
 -- ============================================================================
 -- Mengaktifkan RLS pada seluruh tabel.
 -- Akses melalui service_role (backend server / node backend) otomatis bypass RLS.
--- Kebijakan di bawah ini memberikan izin akses yang sesuai jika diakses via
--- Supabase Client SDK (anon / authenticated).
+-- Public policies expose only storefront content. Sensitive data remains
+-- inaccessible to anon clients and is accessed through server-side routes.
 
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.email_verification_tokens ENABLE ROW LEVEL SECURITY;
@@ -400,7 +400,7 @@ DROP POLICY IF EXISTS "Allow public read on categories" ON public.categories;
 CREATE POLICY "Allow public read on categories" ON public.categories FOR SELECT USING (true);
 
 DROP POLICY IF EXISTS "Allow public read on products" ON public.products;
-CREATE POLICY "Allow public read on products" ON public.products FOR SELECT USING (true);
+CREATE POLICY "Allow public read on products" ON public.products FOR SELECT USING (status = 'active');
 
 DROP POLICY IF EXISTS "Allow public read on product_images" ON public.product_images;
 CREATE POLICY "Allow public read on product_images" ON public.product_images FOR SELECT USING (true);
@@ -433,54 +433,32 @@ DROP POLICY IF EXISTS "Allow public read on site_content" ON public.site_content
 CREATE POLICY "Allow public read on site_content" ON public.site_content FOR SELECT USING (true);
 
 DROP POLICY IF EXISTS "Allow public read on payment_accounts" ON public.payment_accounts;
-CREATE POLICY "Allow public read on payment_accounts" ON public.payment_accounts FOR SELECT USING (true);
 
 DROP POLICY IF EXISTS "Allow public read on engagement_content" ON public.engagement_content;
 CREATE POLICY "Allow public read on engagement_content" ON public.engagement_content FOR SELECT USING (true);
 
 -- ----------------------------------------------------------------------------
--- Orders & Checkout Policies (Pelanggan dapat membuat & melihat pesanan)
+-- Sensitive records are accessed through authenticated server routes only.
 -- ----------------------------------------------------------------------------
 
 DROP POLICY IF EXISTS "Allow public insert on orders" ON public.orders;
-CREATE POLICY "Allow public insert on orders" ON public.orders FOR INSERT WITH CHECK (true);
-
 DROP POLICY IF EXISTS "Allow public read on orders" ON public.orders;
-CREATE POLICY "Allow public read on orders" ON public.orders FOR SELECT USING (true);
-
 DROP POLICY IF EXISTS "Allow public update on orders" ON public.orders;
-CREATE POLICY "Allow public update on orders" ON public.orders FOR UPDATE USING (true);
-
 DROP POLICY IF EXISTS "Allow public insert on order_items" ON public.order_items;
-CREATE POLICY "Allow public insert on order_items" ON public.order_items FOR INSERT WITH CHECK (true);
-
 DROP POLICY IF EXISTS "Allow public read on order_items" ON public.order_items;
-CREATE POLICY "Allow public read on order_items" ON public.order_items FOR SELECT USING (true);
-
 DROP POLICY IF EXISTS "Allow public insert on payment_proofs" ON public.payment_proofs;
-CREATE POLICY "Allow public insert on payment_proofs" ON public.payment_proofs FOR INSERT WITH CHECK (true);
-
 DROP POLICY IF EXISTS "Allow public read on payment_proofs" ON public.payment_proofs;
-CREATE POLICY "Allow public read on payment_proofs" ON public.payment_proofs FOR SELECT USING (true);
 
 -- ----------------------------------------------------------------------------
 -- Users & Auth Tokens Policies
 -- ----------------------------------------------------------------------------
 
 DROP POLICY IF EXISTS "Allow public insert on users" ON public.users;
-CREATE POLICY "Allow public insert on users" ON public.users FOR INSERT WITH CHECK (true);
-
 DROP POLICY IF EXISTS "Allow public read on users" ON public.users;
-CREATE POLICY "Allow public read on users" ON public.users FOR SELECT USING (true);
-
 DROP POLICY IF EXISTS "Allow public update on users" ON public.users;
-CREATE POLICY "Allow public update on users" ON public.users FOR UPDATE USING (true);
-
 DROP POLICY IF EXISTS "Allow public insert on email_verification_tokens" ON public.email_verification_tokens;
-CREATE POLICY "Allow public insert on email_verification_tokens" ON public.email_verification_tokens FOR INSERT WITH CHECK (true);
-
 DROP POLICY IF EXISTS "Allow public read on email_verification_tokens" ON public.email_verification_tokens;
-CREATE POLICY "Allow public read on email_verification_tokens" ON public.email_verification_tokens FOR SELECT USING (true);
-
 DROP POLICY IF EXISTS "Allow public update on email_verification_tokens" ON public.email_verification_tokens;
-CREATE POLICY "Allow public update on email_verification_tokens" ON public.email_verification_tokens FOR UPDATE USING (true);
+DROP POLICY IF EXISTS "Allow public insert on password_reset_tokens" ON public.password_reset_tokens;
+DROP POLICY IF EXISTS "Allow public read on password_reset_tokens" ON public.password_reset_tokens;
+DROP POLICY IF EXISTS "Allow public update on password_reset_tokens" ON public.password_reset_tokens;

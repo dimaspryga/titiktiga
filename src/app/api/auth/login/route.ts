@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import crypto from "crypto";
+import { createHash, timingSafeEqual } from "crypto";
+import { compare, hash } from "bcryptjs";
 import supabase from "@/lib/supabase";
 import { createAuthToken, setAuthCookie } from "@/lib/auth-session";
 
@@ -21,37 +22,58 @@ const DEMO_USERS: Record<string, { id: string; name: string; email: string; role
 };
 
 export async function POST(req: NextRequest) {
-  const input = await req.json();
+  const input = await req.json().catch(() => null);
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return NextResponse.json({ error: "auth.error.invalid" }, { status: 400 });
+  }
   const email = String(input.email ?? "").trim().toLowerCase();
-  let passwordHash = String(input.passwordHash ?? "");
-
-  // Fallback if plain password was sent
-  if (!passwordHash && input.password) {
-    passwordHash = "sha256:" + crypto.createHash("sha256").update(String(input.password)).digest("hex");
+  const password = String(input.password ?? "");
+  const legacyPasswordHash = `sha256:${createHash("sha256").update(password).digest("hex")}`;
+  if (!/^\S+@\S+\.\S+$/.test(email) || password.length < 8 || password.length > 128) {
+    return NextResponse.json({ error: "auth.error.invalid" }, { status: 400 });
   }
 
   // 1. Coba cari di database Supabase
-  let { data: user } = await supabase
+  const { data: initialUser, error: lookupError } = await supabase
     .from("users")
     .select("id, name, email, password_hash, role, email_verified_at")
     .eq("email", email)
     .maybeSingle();
+  let user = initialUser;
 
-  // 2. Dukungan otomatis akun demo: jika password cocok, pastikan user ada & terverifikasi
-  const demoConfig = DEMO_USERS[email];
-  if (demoConfig && passwordHash === demoConfig.passwordHash) {
+  const demoCredentialsEnabled =
+    process.env.NODE_ENV !== "production" || process.env.ENABLE_DEMO_ACCOUNTS === "true";
+  const isDefaultDemoCredential = Object.values(DEMO_USERS).some(
+    (account) => account.passwordHash === legacyPasswordHash
+  );
+  if (!demoCredentialsEnabled && isDefaultDemoCredential) {
+    return NextResponse.json({ error: "auth.error.invalid" }, { status: 401 });
+  }
+
+  const demoConfig = demoCredentialsEnabled ? DEMO_USERS[email] : undefined;
+  const isDemoLogin =
+    Boolean(demoConfig) &&
+    legacyPasswordHash === demoConfig?.passwordHash &&
+    (!user || user.password_hash === demoConfig.passwordHash);
+  if (lookupError && !isDemoLogin) {
+    return NextResponse.json(
+      { error: "Database akun sedang tidak dapat diakses." },
+      { status: 503 }
+    );
+  }
+
+  if (isDemoLogin && demoConfig) {
     const emailVerifiedAt = user?.email_verified_at ?? new Date().toISOString();
-    try {
-      await supabase.from("users").upsert({
-        id: user?.id ?? demoConfig.id,
-        name: user?.name ?? demoConfig.name,
+    if (!user) {
+      const { error: demoUserError } = await supabase.from("users").upsert({
+        id: demoConfig.id,
+        name: demoConfig.name,
         email: demoConfig.email,
         password_hash: demoConfig.passwordHash,
         role: demoConfig.role,
         email_verified_at: emailVerifiedAt,
       });
-    } catch {
-      // Abaikan jika Supabase sedang offline atau unconfigured saat login demo
+      if (demoUserError) console.error("Demo account bootstrap failed", demoUserError);
     }
 
     user = {
@@ -64,12 +86,39 @@ export async function POST(req: NextRequest) {
     };
   }
 
-  if (!user || user.password_hash !== passwordHash) {
+  if (!user) {
+    return NextResponse.json({ error: "auth.error.invalid" }, { status: 401 });
+  }
+
+  const storedPasswordHash = String(user.password_hash ?? "");
+  const isLegacyHash = storedPasswordHash.startsWith("sha256:");
+  let validPassword = false;
+  if (isLegacyHash) {
+    const storedHashBytes = Buffer.from(storedPasswordHash);
+    const suppliedHashBytes = Buffer.from(legacyPasswordHash);
+    validPassword =
+      storedHashBytes.length === suppliedHashBytes.length &&
+      timingSafeEqual(storedHashBytes, suppliedHashBytes);
+  } else if (/^\$2[aby]\$/.test(storedPasswordHash)) {
+    validPassword = await compare(password, storedPasswordHash);
+  }
+  if (!validPassword) {
     return NextResponse.json({ error: "auth.error.invalid" }, { status: 401 });
   }
 
   if (!user.email_verified_at) {
     return NextResponse.json({ error: "auth.error.unverified" }, { status: 403 });
+  }
+
+  if (isLegacyHash && !isDemoLogin) {
+    const upgradedHash = await hash(password, 12);
+    const { error: upgradeError } = await supabase
+      .from("users")
+      .update({ password_hash: upgradedHash })
+      .eq("id", user.id);
+    if (upgradeError) {
+      return NextResponse.json({ error: "Database akun sedang tidak dapat diakses." }, { status: 503 });
+    }
   }
 
   const sessionUser = { id: user.id, name: user.name, email: user.email, role: user.role };

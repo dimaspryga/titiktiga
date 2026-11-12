@@ -42,8 +42,12 @@ function mapProduct(p: any) {
 
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams;
-  const page = Math.max(1, Number(q.get("page") ?? 1));
-  const perPage = Math.max(1, Number(q.get("perPage") ?? 8));
+  const requestedPage = Number(q.get("page") ?? 1);
+  const requestedPerPage = Number(q.get("perPage") ?? 8);
+  const page = Number.isFinite(requestedPage) ? Math.max(1, Math.floor(requestedPage)) : 1;
+  const perPage = Number.isFinite(requestedPerPage)
+    ? Math.min(50, Math.max(1, Math.floor(requestedPerPage)))
+    : 8;
 
   let query = supabase
     .from("products")
@@ -57,6 +61,14 @@ export async function GET(req: NextRequest) {
   }
   if (q.get("q")) {
     query = query.ilike("name", `%${q.get("q")}%`);
+  }
+  const minPrice = Number(q.get("minPrice"));
+  if (q.has("minPrice") && Number.isFinite(minPrice)) {
+    query = query.gte("price", minPrice);
+  }
+  const maxPrice = Number(q.get("maxPrice"));
+  if (q.has("maxPrice") && Number.isFinite(maxPrice)) {
+    query = query.lte("price", maxPrice);
   }
   if (q.get("inStockOnly") === "true") {
     query = query.gt("stock", 0);
@@ -72,6 +84,10 @@ export async function GET(req: NextRequest) {
     query = query.order("price", { ascending: false });
   } else if (sort === "name-asc") {
     query = query.order("name", { ascending: true });
+  } else if (sort === "discount") {
+    query = query
+      .order("discount_percent", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false });
   } else {
     query = query.order("created_at", { ascending: false });
   }
@@ -132,7 +148,17 @@ export async function POST(req: NextRequest) {
       url,
       position,
     }));
-    await supabase.from("product_images").insert(images);
+    const { error: imagesError } = await supabase.from("product_images").insert(images);
+    if (imagesError) {
+      const { error: cleanupError } = await supabase.from("products").delete().eq("id", product.id);
+      return NextResponse.json(
+        {
+          error: imagesError.message,
+          ...(cleanupError && { cleanupError: cleanupError.message }),
+        },
+        { status: 500 }
+      );
+    }
   }
 
   if (Array.isArray(input.specs) && input.specs.length > 0) {
@@ -142,14 +168,31 @@ export async function POST(req: NextRequest) {
       value: spec.value,
       position,
     }));
-    await supabase.from("product_specs").insert(specs);
+    const { error: specsError } = await supabase.from("product_specs").insert(specs);
+    if (specsError) {
+      const { error: cleanupError } = await supabase.from("products").delete().eq("id", product.id);
+      return NextResponse.json(
+        {
+          error: specsError.message,
+          ...(cleanupError && { cleanupError: cleanupError.message }),
+        },
+        { status: 500 }
+      );
+    }
   }
 
-  const { data: fullProduct } = await supabase
+  const { data: fullProduct, error: fullProductError } = await supabase
     .from("products")
     .select("*, product_images(url, position), product_specs(label, value, position)")
     .eq("id", product.id)
     .single();
+
+  if (fullProductError || !fullProduct) {
+    return NextResponse.json(
+      { error: fullProductError?.message ?? "Produk tidak dapat dibaca kembali setelah disimpan" },
+      { status: 500 }
+    );
+  }
 
   return NextResponse.json(mapProduct(fullProduct), { status: 201 });
 }

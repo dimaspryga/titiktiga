@@ -14,7 +14,7 @@ import { formatIDR } from "@/lib/utils";
 
 export default function OrderDetailPage() {
   const params = useParams<{ number: string }>();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const orderNumber = typeof params?.number === "string" ? params.number : "";
   const { data: order, isLoading, error } = useOrderByNumber(orderNumber);
 
@@ -56,7 +56,7 @@ export default function OrderDetailPage() {
             <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{t("orders.detailTitle")}</p>
             <h2 className="mt-1 font-display text-2xl font-medium" data-testid="order-detail-number">{order.number}</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              {new Date(order.createdAt).toLocaleString("id-ID", {
+              {new Date(order.createdAt).toLocaleString(locale === "id" ? "id-ID" : "en-US", {
                 day: "numeric",
                 month: "long",
                 year: "numeric",

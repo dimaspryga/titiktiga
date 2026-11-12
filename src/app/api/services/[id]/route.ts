@@ -19,13 +19,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   if (Array.isArray(patch.deliverables)) {
-    await supabase.from("service_deliverables").delete().eq("service_id", id);
+    const { error: deleteError } = await supabase.from("service_deliverables").delete().eq("service_id", id);
+    if (deleteError) {
+      return NextResponse.json({ error: deleteError.message }, { status: 500 });
+    }
     const deliverables = patch.deliverables.map((label: any, position: number) => ({
       service_id: id,
       label,
       position,
     }));
-    await supabase.from("service_deliverables").insert(deliverables);
+    if (deliverables.length > 0) {
+      const { error: insertError } = await supabase.from("service_deliverables").insert(deliverables);
+      if (insertError) {
+        return NextResponse.json({ error: insertError.message }, { status: 500 });
+      }
+    }
   }
 
   return NextResponse.json({ ok: true });

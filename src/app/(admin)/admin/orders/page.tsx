@@ -14,7 +14,7 @@ import { formatIDR, cn } from "@/lib/utils";
 const STATUSES: OrderStatus[] = ["pending", "processing", "shipped", "completed", "cancelled"];
 
 export default function AdminOrdersPage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<OrderStatus | "all">("all");
   const [page, setPage] = useState(1);
@@ -105,7 +105,7 @@ export default function AdminOrdersPage() {
                   <p className="text-xs text-muted-foreground">{order.customerEmail}</p>
                 </td>
                 <td className="px-4 py-3 font-mono text-xs">
-                  {new Date(order.createdAt).toLocaleDateString("id-ID", {
+                  {new Date(order.createdAt).toLocaleDateString(locale === "id" ? "id-ID" : "en-US", {
                     day: "numeric",
                     month: "short",
                     year: "numeric",

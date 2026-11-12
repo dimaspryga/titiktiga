@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { currentAuth } from "@/lib/auth-session";
 import supabase from "@/lib/supabase";
 
 function parseJson(value: unknown): unknown {
@@ -48,9 +49,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     .from("products")
     .select("*, product_images(url, position), product_specs(label, value, position)");
 
-  const { data, error } = await (by === "slug" ? query.eq("slug", id) : query.eq("id", id)).single();
+  const { data, error } = await (by === "slug" ? query.eq("slug", id) : query.eq("id", id)).maybeSingle();
 
-  if (error || !data) return NextResponse.json(null, { status: 404 });
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!data) return NextResponse.json(null, { status: 404 });
+  if (data.status !== "active") {
+    const auth = await currentAuth();
+    if (auth?.role !== "admin") return NextResponse.json(null, { status: 404 });
+  }
   return NextResponse.json(mapProduct(data));
 }
 
@@ -78,31 +84,50 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   if (Array.isArray(input.images)) {
-    await supabase.from("product_images").delete().eq("product_id", id);
+    const { error: deleteImagesError } = await supabase.from("product_images").delete().eq("product_id", id);
+    if (deleteImagesError) {
+      return NextResponse.json({ error: deleteImagesError.message }, { status: 500 });
+    }
     const images = input.images.map((url: string, position: number) => ({
       product_id: id,
       url,
       position,
     }));
-    await supabase.from("product_images").insert(images);
+    if (images.length > 0) {
+      const { error: imagesError } = await supabase.from("product_images").insert(images);
+      if (imagesError) return NextResponse.json({ error: imagesError.message }, { status: 500 });
+    }
   }
 
   if (Array.isArray(input.specs)) {
-    await supabase.from("product_specs").delete().eq("product_id", id);
+    const { error: deleteSpecsError } = await supabase.from("product_specs").delete().eq("product_id", id);
+    if (deleteSpecsError) {
+      return NextResponse.json({ error: deleteSpecsError.message }, { status: 500 });
+    }
     const specs = input.specs.map((spec: any, position: number) => ({
       product_id: id,
       label: spec.label,
       value: spec.value,
       position,
     }));
-    await supabase.from("product_specs").insert(specs);
+    if (specs.length > 0) {
+      const { error: specsError } = await supabase.from("product_specs").insert(specs);
+      if (specsError) return NextResponse.json({ error: specsError.message }, { status: 500 });
+    }
   }
 
-  const { data: fullProduct } = await supabase
+  const { data: fullProduct, error: fullProductError } = await supabase
     .from("products")
     .select("*, product_images(url, position), product_specs(label, value, position)")
     .eq("id", id)
     .single();
+
+  if (fullProductError || !fullProduct) {
+    return NextResponse.json(
+      { error: fullProductError?.message ?? "Produk tidak ditemukan" },
+      { status: fullProductError ? 500 : 404 }
+    );
+  }
 
   return NextResponse.json(mapProduct(fullProduct));
 }

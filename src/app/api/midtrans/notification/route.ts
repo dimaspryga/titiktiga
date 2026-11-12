@@ -24,16 +24,36 @@ export async function POST(req: NextRequest) {
 
     const serverKey = midtransServerKey();
 
-    // Verifikasi signature key jika serverKey terkonfigurasi
-    if (serverKey && signatureKey) {
-      const expectedSignature = crypto
-        .createHash("sha512")
-        .update(`${orderId}${statusCode}${grossAmount}${serverKey}`)
-        .digest("hex");
+    if (!serverKey || typeof signatureKey !== "string") {
+      return NextResponse.json({ error: "Midtrans signature verification is not configured" }, { status: 503 });
+    }
 
-      if (signatureKey !== expectedSignature) {
-        return NextResponse.json({ error: "Invalid signature key" }, { status: 403 });
-      }
+    const expectedSignature = crypto
+      .createHash("sha512")
+      .update(`${orderId}${statusCode}${grossAmount}${serverKey}`)
+      .digest("hex");
+    const suppliedSignature = Buffer.from(signatureKey, "hex");
+    const expectedSignatureBytes = Buffer.from(expectedSignature, "hex");
+    if (
+      suppliedSignature.length !== expectedSignatureBytes.length ||
+      !crypto.timingSafeEqual(suppliedSignature, expectedSignatureBytes)
+    ) {
+      return NextResponse.json({ error: "Invalid signature key" }, { status: 403 });
+    }
+
+    const { data: order, error: orderLookupError } = await supabase
+      .from("orders")
+      .select("id, total")
+      .eq("number", orderId)
+      .maybeSingle();
+    if (orderLookupError) {
+      return NextResponse.json({ error: orderLookupError.message }, { status: 500 });
+    }
+    if (!order) {
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
+    if (!Number.isFinite(Number(grossAmount)) || Number(grossAmount) !== Number(order.total)) {
+      return NextResponse.json({ error: "Payment amount does not match the order" }, { status: 400 });
     }
 
     // Tentukan payment_status dan order_status berdasarkan status transaksi Midtrans
@@ -96,4 +116,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-

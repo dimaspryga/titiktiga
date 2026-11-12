@@ -1,19 +1,5 @@
 import type { MockUser, Session } from "@/lib/types";
 
-const HASH_PREFIX = "sha256:";
-
-export async function hashPassword(password: string): Promise<string> {
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(password));
-  const hex = Array.from(new Uint8Array(buf))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-  return HASH_PREFIX + hex;
-}
-
-export function verifyPassword(password: string, storedHash: string): Promise<boolean> {
-  return hashPassword(password).then((h) => h === storedHash);
-}
-
 export function sessionFromUser(user: MockUser): Session {
   return {
     userId: user.id,
@@ -32,13 +18,12 @@ export type AuthResult =
 /** Nama lama dipertahankan agar halaman login/register tidak perlu diubah. */
 export const mockAuthAdapter = {
   async login(email: string, password: string): Promise<AuthResult> {
-    const passwordHash = await hashPassword(password);
     let response: Response;
     try {
       response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), passwordHash }),
+        body: JSON.stringify({ email: email.trim(), password }),
       });
     } catch {
       return { error: "auth.error.network" };
@@ -49,13 +34,12 @@ export const mockAuthAdapter = {
   },
 
   async register(name: string, email: string, password: string): Promise<AuthResult> {
-    const passwordHash = await hashPassword(password);
     let response: Response;
     try {
       response = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, passwordHash }),
+        body: JSON.stringify({ name, email, password }),
       });
     } catch {
       return { error: "auth.error.network" };
@@ -73,7 +57,7 @@ export const mockAuthAdapter = {
       response = await fetch("/api/auth/password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, passwordHash: await hashPassword(newPassword) }),
+        body: JSON.stringify({ email, password: newPassword }),
       });
     } catch {
       return false;

@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Plus, ShoppingBag, Zap } from "lucide-react";
+import { Loader2, ShoppingCart, ShoppingBag, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
 import { useCartStore } from "@/lib/stores/cart";
@@ -40,6 +40,7 @@ function useCartAction(product: Product) {
       slug: product.slug,
       name: product.name,
       image: product.images[0] ?? "",
+      category: product.category,
       price: product.price,
       discountPercent: product.discountPercent,
       stock: product.stock,
@@ -86,11 +87,11 @@ export function AddToCartButton({
         disabled={disabled || busy}
         onClick={handle}
         className={cn(
-          "inline-flex h-10 w-10 items-center justify-center border border-foreground/20 bg-background transition-colors hover:bg-lime hover:text-lime-foreground disabled:cursor-not-allowed disabled:opacity-40",
+          "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-foreground/20 bg-background transition-[background-color,color,transform] hover:-translate-y-0.5 hover:bg-lime hover:text-lime-foreground disabled:cursor-not-allowed disabled:opacity-40",
           className
         )}
       >
-        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
       </button>
     );
   }

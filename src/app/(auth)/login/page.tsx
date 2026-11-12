@@ -6,7 +6,7 @@ import { Suspense, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { ArrowRight, Loader2, ShieldAlert } from "lucide-react";
+import { ArrowRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -78,41 +78,7 @@ function LoginContent() {
       <h1 className="font-display text-4xl font-medium tracking-tight md:text-5xl">{t("auth.login.title")}</h1>
       <p className="mt-3 text-sm text-muted-foreground">{t("auth.login.subtitle")}</p>
 
-      <div className="mt-6 border border-border bg-card p-4" data-testid="login-demo-credentials">
-        <p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-          <ShieldAlert className="h-3.5 w-3.5" /> {t("auth.demo.title")} — {t("demo.badge")}
-        </p>
-        <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{t("auth.demo.body")}</p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            type="button"
-            data-testid="fill-demo-customer"
-            onClick={() => {
-              form.setValue("email", "demo@titiktiga.studio", { shouldValidate: true });
-              form.setValue("password", "demo1234", { shouldValidate: true });
-              form.clearErrors();
-            }}
-            className="border border-border px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest hover:bg-accent"
-          >
-            demo@titiktiga.studio
-          </button>
-          <button
-            type="button"
-            data-testid="fill-demo-admin"
-            onClick={() => {
-              form.setValue("email", "admin@titiktiga.studio", { shouldValidate: true });
-              form.setValue("password", "admin1234", { shouldValidate: true });
-              form.clearErrors();
-            }}
-            className="border border-border px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest hover:bg-accent"
-          >
-            admin@titiktiga.studio
-          </button>
-        </div>
-        <p className="mt-2 text-xs text-muted-foreground">Kata sandi pelanggan: <strong>demo1234</strong>. Kata sandi admin: <strong>admin1234</strong>.</p>
-      </div>
-
-      <form onSubmit={form.handleSubmit(onSubmit)} className="mt-8 space-y-5" data-testid="login-form" noValidate>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="mt-6 space-y-5" data-testid="login-form" noValidate>
         <div className="space-y-2">
           <Label htmlFor="login-email">{t("auth.email")}</Label>
           <Input id="login-email" type="email" autoComplete="email" data-testid="login-input-email" {...form.register("email")} className="h-12 rounded-none" />

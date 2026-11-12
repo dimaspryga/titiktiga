@@ -35,11 +35,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     .update(updates)
     .eq("id", id)
     .select()
-    .single();
+    .maybeSingle();
 
-  if (error || !data) {
-    return NextResponse.json({ error: error?.message ?? "Promosi tidak ditemukan" }, { status: 404 });
-  }
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!data) return NextResponse.json({ error: "Promosi tidak ditemukan" }, { status: 404 });
 
   return NextResponse.json(mapPromotion(data));
 }

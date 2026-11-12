@@ -26,7 +26,7 @@ export async function GET() {
   let services = initialServices;
   if (!services || services.length === 0) {
     for (const service of seedServices) {
-      const { data: createdService } = await supabase
+      const { data: createdService, error: createError } = await supabase
         .from("services")
         .insert({
           slug: service.slug,
@@ -39,13 +39,30 @@ export async function GET() {
         .select()
         .single();
 
+      if (createError || !createdService) {
+        return NextResponse.json(
+          { error: createError?.message ?? "Gagal menambahkan data layanan awal" },
+          { status: 500 }
+        );
+      }
+
       if (createdService && service.deliverables?.length) {
         const deliverables = service.deliverables.map((label: any, position: number) => ({
           service_id: createdService.id,
           label,
           position,
         }));
-        await supabase.from("service_deliverables").insert(deliverables);
+        const { error: deliverablesError } = await supabase.from("service_deliverables").insert(deliverables);
+        if (deliverablesError) {
+          const { error: cleanupError } = await supabase.from("services").delete().eq("id", createdService.id);
+          return NextResponse.json(
+            {
+              error: deliverablesError.message,
+              ...(cleanupError && { cleanupError: cleanupError.message }),
+            },
+            { status: 500 }
+          );
+        }
       }
     }
 
@@ -53,6 +70,10 @@ export async function GET() {
       .from("services")
       .select("*, service_deliverables(label, position)")
       .order("index_label", { ascending: true });
+
+    if (recheck.error) {
+      return NextResponse.json({ error: recheck.error.message }, { status: 500 });
+    }
 
     services = recheck.data ?? [];
   }

@@ -34,13 +34,20 @@ export async function GET() {
       position,
     }));
 
-    await supabase.from("testimonials").insert(seedData);
+    const { error: seedError } = await supabase.from("testimonials").insert(seedData);
+    if (seedError) {
+      return NextResponse.json({ error: seedError.message }, { status: 500 });
+    }
 
     const recheck = await supabase
       .from("testimonials")
       .select("*")
       .order("position", { ascending: true })
       .order("name", { ascending: true });
+
+    if (recheck.error) {
+      return NextResponse.json({ error: recheck.error.message }, { status: 500 });
+    }
 
     rows = recheck.data ?? [];
   }

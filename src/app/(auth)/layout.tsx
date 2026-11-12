@@ -1,7 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import { LogoMark } from "@/components/logo";
+import { useI18n } from "@/lib/i18n";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
+  const { t } = useI18n();
+
   return (
     <div className="grid min-h-screen lg:grid-cols-2" data-testid="auth-layout">
       <div className="relative hidden flex-col justify-between bg-foreground p-10 text-background lg:flex">
@@ -10,12 +15,12 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </Link>
         <div>
           <p className="font-display text-6xl font-medium leading-[1.05]">
-            Menghubungkan titik,
+            {t("auth.brand.firstLine")}
             <br />
-            <em className="italic text-lime">menciptakan makna.</em>
+            <em className="italic text-lime">{t("auth.brand.secondLine")}</em>
           </p>
           <p className="mt-8 max-w-sm text-sm leading-relaxed text-background/60">
-            Studio desain & toko produk digital dari Magelang. Akun dan transaksi tersimpan aman di database aplikasi.
+            {t("auth.brand.tagline")}
           </p>
         </div>
         <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-background/40">© {new Date().getFullYear()} Titiktiga</p>

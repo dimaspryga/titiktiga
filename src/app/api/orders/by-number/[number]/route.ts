@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { currentAuth } from "@/lib/auth-session";
+import { signedPaymentProofUrl } from "@/lib/payment-proof";
 import supabase from "@/lib/supabase";
 
 export async function GET(_: Request, { params }: { params: Promise<{ number: string }> }) {
@@ -9,10 +11,17 @@ export async function GET(_: Request, { params }: { params: Promise<{ number: st
     .from("orders")
     .select("*, order_items(*), payment_proofs(file_path, submitted_at)")
     .eq("number", decodedNumber)
-    .single();
+    .maybeSingle();
 
-  if (error || !o) {
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  if (!o) {
     return NextResponse.json(null, { status: 404 });
+  }
+  const auth = await currentAuth();
+  if (!auth || (auth.role !== "admin" && auth.email.toLowerCase() !== o.customer_email.toLowerCase())) {
+    return NextResponse.json({ error: "Access denied" }, { status: 403 });
   }
 
   const sortedProofs = (o.payment_proofs ?? []).sort(
@@ -48,7 +57,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ number: st
     paymentMethod: o.payment_method ?? "transfer",
     paymentStatus: o.payment_status,
     paymentNote: o.payment_note ?? "",
-    paymentProof: sortedProofs[0]?.file_path ?? null,
+    paymentProof: await signedPaymentProofUrl(sortedProofs[0]?.file_path),
     paymentReviewedAt: o.payment_reviewed_at,
     createdAt: o.created_at,
   });

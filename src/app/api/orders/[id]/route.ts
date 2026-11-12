@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { signedPaymentProofUrl } from "@/lib/payment-proof";
 import supabase from "@/lib/supabase";
 
 async function fullOrder(id: string) {
@@ -6,15 +7,16 @@ async function fullOrder(id: string) {
     .from("orders")
     .select("*, order_items(*), payment_proofs(file_path, submitted_at)")
     .eq("id", id)
-    .single();
+    .maybeSingle();
 
-  if (error || !o) return null;
+  if (error || !o) return { order: null, error };
 
   const sortedProofs = (o.payment_proofs ?? []).sort(
     (a: any, b: any) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime()
   );
 
   return {
+    order: {
     id: o.id,
     number: o.number,
     customerName: o.customer_name,
@@ -43,9 +45,11 @@ async function fullOrder(id: string) {
     paymentMethod: o.payment_method ?? "transfer",
     paymentStatus: o.payment_status,
     paymentNote: o.payment_note ?? "",
-    paymentProof: sortedProofs[0]?.file_path ?? null,
+    paymentProof: await signedPaymentProofUrl(sortedProofs[0]?.file_path),
     paymentReviewedAt: o.payment_reviewed_at,
     createdAt: o.created_at,
+    },
+    error: null,
   };
 }
 
@@ -61,7 +65,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     updates.payment_reviewed_at = new Date().toISOString();
 
     if (i.paymentStatus === "approved" || i.paymentStatus === "rejected") {
-      await supabase
+      const { error } = await supabase
         .from("payment_proofs")
         .update({
           status: i.paymentStatus,
@@ -69,6 +73,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           reviewed_at: new Date().toISOString(),
         })
         .eq("order_id", id);
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
     }
   }
 
@@ -81,13 +88,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   if (Object.keys(updates).length > 0) {
-    await supabase.from("orders").update(updates).eq("id", id);
+    const { error } = await supabase.from("orders").update(updates).eq("id", id);
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
   }
 
   const updated = await fullOrder(id);
-  if (!updated) {
+  if (updated.error) {
+    return NextResponse.json({ error: updated.error.message }, { status: 500 });
+  }
+  if (!updated.order) {
     return NextResponse.json({ error: "Pesanan tidak ditemukan" }, { status: 404 });
   }
 
-  return NextResponse.json(updated);
+  return NextResponse.json(updated.order);
 }

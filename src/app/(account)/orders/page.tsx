@@ -18,7 +18,7 @@ const PER_PAGE = 10;
 const STATUSES: OrderStatus[] = ["pending", "processing", "shipped", "completed", "cancelled"];
 
 export default function OrdersPage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const session = useSessionStore((s) => s.session);
   const [search, setSearch] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -131,7 +131,7 @@ export default function OrdersPage() {
                   <div>
                     <p className="font-mono text-sm font-bold" data-testid={`order-number-${order.number}`}>{order.number}</p>
                     <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                      {new Date(order.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+                      {new Date(order.createdAt).toLocaleDateString(locale === "id" ? "id-ID" : "en-US", { day: "numeric", month: "short", year: "numeric" })}
                     </p>
                   </div>
                   <StatusBadge status={order.status} label={t(`status.${order.status}`)} />
