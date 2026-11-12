@@ -1,8 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import { useState } from "react";
 import { Play } from "lucide-react";
+import { ProductMedia } from "@/components/product-media";
 import { SafeImage } from "@/components/safe-image";
 
 /**
@@ -15,15 +15,18 @@ export function AboutVideo({ src, poster, caption }: { src?: string; poster?: st
   return (
     <div className="relative aspect-video overflow-hidden bg-foreground" data-testid="about-video">
       {playing && src ? (
-        <video
-          src={src}
-          poster={poster}
-          controls
-          autoPlay
-          playsInline
-          className="h-full w-full object-cover"
-          data-testid="about-video-player"
-        />
+        <div className="absolute inset-0" data-testid="about-video-player">
+          <ProductMedia
+            src={src}
+            alt={caption}
+            fill
+            controls
+            autoPlay
+            playOnLoad
+            poster={poster}
+            className="object-cover"
+          />
+        </div>
       ) : (
         <button
           type="button"

@@ -24,13 +24,13 @@ const mono = JetBrains_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
   title: {
-    default: "Titiktiga — Studio Kreatif & Toko Produk Desain Yogyakarta",
+    default: "Titiktiga — Studio Kreatif & Toko Produk Desain Magelang",
     template: "%s — Titiktiga",
   },
   description:
-    "Titiktiga adalah studio desain & toko produk kreatif dari Yogyakarta: identitas brand, cetakan riso, stationery, dan objek pilihan. Langganan desain bulanan tanpa rekrutmen.",
+    "Titiktiga adalah studio desain & toko produk kreatif dari Magelang identitas brand, cetakan riso, stationery, dan objek pilihan. Langganan desain bulanan tanpa rekrutmen.",
   keywords: [
-    "studio desain Yogyakarta",
+    "studio desain Magelang",
     "creative agency Indonesia",
     "jasa desain grafis",
     "cetak risograf",
@@ -48,14 +48,14 @@ export const metadata: Metadata = {
     alternateLocale: ["en_US"],
     url: "/",
     siteName: "Titiktiga",
-    title: "Titiktiga — Studio Kreatif & Toko Produk Desain Yogyakarta",
+    title: "Titiktiga — Studio Kreatif & Toko Produk Desain Magelang",
     description:
-      "Studio desain & toko produk kreatif dari Yogyakarta: identitas brand, cetakan riso, stationery, dan objek pilihan.",
+      "Studio desain & toko produk kreatif dari Magelang identitas brand, cetakan riso, stationery, dan objek pilihan.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Titiktiga — Studio Kreatif & Toko Produk Desain",
-    description: "Studio desain & toko produk kreatif dari Yogyakarta.",
+    title: "Titiktiga — Studio Kreatif & Toko Produk Desain Magelang",
+    description: "Studio desain & toko produk kreatif dari Magelang.",
   },
   robots: {
     index: true,
@@ -71,11 +71,11 @@ const organizationJsonLd = {
   name: "Titiktiga",
   url: "/",
   logo: "/favicon.svg",
-  description: "Studio desain & toko produk kreatif dari Yogyakarta, Indonesia.",
+  description: "Studio desain & toko produk kreatif dari Magelang, Indonesia.",
   address: {
     "@type": "PostalAddress",
     streetAddress: "Jl. Prawirotaman No. 33",
-    addressLocality: "Yogyakarta",
+    addressLocality: "Magelang",
     addressCountry: "ID",
   },
   sameAs: ["https://wa.me/6281234567890", "https://discord.gg/titiktiga"],

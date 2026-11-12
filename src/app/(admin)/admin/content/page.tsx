@@ -217,7 +217,7 @@ function AboutTab({ content }: { content: SiteContent }) {
           />
         ))}
         <LTField label="Filosofi" value={about.philosophy} onChange={(philosophy) => setAbout({ ...about, philosophy })} rows={3} testIdPrefix="about-philosophy" />
-        <Input value={about.videoUrl ?? ""} onChange={(event) => setAbout({ ...about, videoUrl: event.target.value })} placeholder="URL video intro (.mp4 / .webm)" className="rounded-none" />
+        <Input value={about.videoUrl ?? ""} onChange={(event) => setAbout({ ...about, videoUrl: event.target.value })} placeholder="URL MP4/WebM atau link YouTube" className="rounded-none" />
         <Input value={about.videoPoster ?? ""} onChange={(event) => setAbout({ ...about, videoPoster: event.target.value })} placeholder="URL poster video" className="rounded-none" />
       </div>
       <SaveButton
