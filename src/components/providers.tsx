@@ -9,6 +9,7 @@ import { useCartStore } from "@/lib/stores/cart";
 import { useSessionStore } from "@/lib/stores/session";
 import { useMockDb } from "@/lib/repositories/db";
 import { Toaster } from "sonner";
+import { PageTransition } from "@/components/page-transition";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => getQueryClient());
@@ -23,7 +24,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
         <LocaleProvider>
-          {children}
+          <PageTransition>{children}</PageTransition>
           <Toaster
             richColors
             closeButton
