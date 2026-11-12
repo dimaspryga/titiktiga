@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import type { Session } from "@/lib/types";
+import { useCartStore } from "@/lib/stores/cart";
 
 interface SessionState {
   session: Session | null;
@@ -14,7 +15,10 @@ export const useSessionStore = create<SessionState>()(
     (set) => ({
       session: null,
       login: (session) => set({ session }),
-      logout: () => set({ session: null }),
+      logout: () => {
+        set({ session: null });
+        useCartStore.getState().clear();
+      },
     }),
     {
       name: "titiktiga.session.v1",

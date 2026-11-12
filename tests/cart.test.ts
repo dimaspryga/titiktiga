@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { useCartStore } from "@/lib/stores/cart";
+import { useSessionStore } from "@/lib/stores/session";
 import type { CartItem } from "@/lib/types";
 
 const item = (id: string, quantity: number, stock = 10): CartItem => ({
@@ -49,6 +50,14 @@ describe("cart store", () => {
     useCartStore.getState().add(item("a", 1));
     useCartStore.getState().setVoucher("TITIK20");
     useCartStore.getState().clear();
+    expect(useCartStore.getState().items).toHaveLength(0);
+    expect(useCartStore.getState().voucherCode).toBeNull();
+  });
+
+  it("clears persisted cart contents when the user logs out", () => {
+    useCartStore.getState().add(item("a", 1));
+    useCartStore.getState().setVoucher("TITIK20");
+    useSessionStore.getState().logout();
     expect(useCartStore.getState().items).toHaveLength(0);
     expect(useCartStore.getState().voucherCode).toBeNull();
   });

@@ -2,31 +2,55 @@
 
 import Lenis from "lenis";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
+
+const LenisContext = createContext<Lenis | null>(null);
+
+export function useLenis() {
+  return useContext(LenisContext);
+}
 
 export function SmoothScroll({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const lenisRef = useRef<Lenis | null>(null);
+  const [lenis, setLenis] = useState<Lenis | null>(null);
 
   useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const lenis = new Lenis({ duration: 1.15, smoothWheel: true });
-    lenisRef.current = lenis;
+    const instance = new Lenis({ duration: 1.15, smoothWheel: true, anchors: true });
+    document.documentElement.classList.add("lenis");
+    setLenis(instance);
     let raf = requestAnimationFrame(function loop(time) {
-      lenis.raf(time);
+      instance.raf(time);
       raf = requestAnimationFrame(loop);
     });
+
     return () => {
       cancelAnimationFrame(raf);
-      lenis.destroy();
-      lenisRef.current = null;
+      instance.destroy();
+      document.documentElement.classList.remove("lenis");
+      setLenis(null);
     };
   }, []);
 
   useEffect(() => {
-    window.scrollTo(0, 0);
-    lenisRef.current?.scrollTo(0, { immediate: true });
-  }, [pathname]);
+    if (!pathname) return;
+    const hashTarget = window.location.hash
+      ? document.getElementById(decodeURIComponent(window.location.hash.slice(1)))
+      : null;
+    if (hashTarget) {
+      if (lenis) {
+        lenis.scrollTo(hashTarget, { immediate: true, offset: -96 });
+      } else {
+        hashTarget.scrollIntoView({ block: "start" });
+      }
+      return;
+    }
 
-  return <>{children}</>;
+    if (lenis) {
+      lenis.scrollTo(0, { immediate: true });
+    } else {
+      window.scrollTo(0, 0);
+    }
+  }, [pathname, lenis]);
+
+  return <LenisContext.Provider value={lenis}>{children}</LenisContext.Provider>;
 }

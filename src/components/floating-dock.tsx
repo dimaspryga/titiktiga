@@ -8,6 +8,7 @@ import { useOrders } from "@/lib/hooks";
 import { useI18n } from "@/lib/i18n";
 import { useSessionStore } from "@/lib/stores/session";
 import { cn } from "@/lib/utils";
+import { useLenis } from "@/components/smooth-scroll";
 
 const HOME_LINKS = [
   { anchor: "#overview", labelKey: "nav.home", icon: Home },
@@ -24,6 +25,7 @@ export function FloatingDock() {
   const { t } = useI18n();
   const pathname = usePathname();
   const session = useSessionStore((state) => state.session);
+  const lenis = useLenis();
   const [activeSection, setActiveSection] = useState("#overview");
   const isHome = pathname === "/";
   const isProducts = pathname === "/products";
@@ -94,6 +96,19 @@ export function FloatingDock() {
             label={label}
             icon={icon}
             active={active}
+            onClick={isHome ? (event) => {
+              if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+              event.preventDefault();
+              const target = document.getElementById(anchor.slice(1));
+              if (!target) return;
+
+              if (lenis) {
+                lenis.scrollTo(target, { offset: -96 });
+              } else {
+                target.scrollIntoView({ behavior: "smooth", block: "start" });
+              }
+              window.history.replaceState(null, "", anchor);
+            } : undefined}
           />
         );
       })}
@@ -140,6 +155,7 @@ function DockLink({
   badgeLabel,
   alwaysShowLabel = false,
   ariaCurrent,
+  onClick,
 }: {
   href: string;
   label: string;
@@ -149,12 +165,14 @@ function DockLink({
   badgeLabel?: string;
   alwaysShowLabel?: boolean;
   ariaCurrent?: "page";
+  onClick?: React.MouseEventHandler<HTMLAnchorElement>;
 }) {
   return (
     <Link
       href={href}
       aria-label={badge !== undefined ? `${label}, ${badgeLabel}` : label}
       aria-current={active ? "location" : ariaCurrent}
+      onClick={onClick}
       className={cn(
         "group inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-3 text-xs font-medium transition-[background-color,color,transform] duration-200 hover:-translate-y-0.5 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-4",
         active ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"

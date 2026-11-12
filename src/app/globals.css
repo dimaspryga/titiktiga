@@ -65,6 +65,22 @@
     scrollbar-gutter: stable;
     overflow-y: scroll;
   }
+  html.lenis,
+  html.lenis body {
+    height: auto;
+  }
+  html.lenis {
+    scroll-behavior: auto !important;
+  }
+  html.lenis.lenis-smooth [data-lenis-prevent] {
+    overscroll-behavior: contain;
+  }
+  html.lenis.lenis-stopped {
+    overflow: clip;
+  }
+  html.lenis.lenis-smooth iframe {
+    pointer-events: none;
+  }
   body {
     @apply bg-background text-foreground antialiased;
     text-rendering: optimizeLegibility;
@@ -130,36 +146,6 @@
   }
   .marquee-paused:hover .marquee-track {
     animation-play-state: paused;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
-  .marquee-track {
-    animation: none !important;
-  }
-  .page-transition {
-    animation: none !important;
-  }
-  .motion-reveal,
-  .motion-stagger,
-  .motion-stagger-item,
-  .motion-magnetic,
-  .motion-parallax,
-  .motion-parallax-layer,
-  .motion-line-mask {
-    opacity: 1 !important;
-    transform: none !important;
-  }
-  *,
-  *::before,
-  *::after {
-    scroll-behavior: auto !important;
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
   }
 }
 

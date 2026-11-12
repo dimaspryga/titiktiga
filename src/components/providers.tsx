@@ -14,8 +14,49 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => getQueryClient());
 
   useEffect(() => {
-    useCartStore.persist?.rehydrate?.();
-    useSessionStore.persist?.rehydrate?.();
+    let active = true;
+
+    const restoreSession = async () => {
+      await Promise.all([
+        Promise.resolve(useCartStore.persist?.rehydrate?.()),
+        Promise.resolve(useSessionStore.persist?.rehydrate?.()),
+      ]);
+
+      try {
+        const response = await fetch("/api/auth/session", { cache: "no-store" });
+        if (!active) return;
+        if (response.status === 401) {
+          useSessionStore.getState().logout();
+          return;
+        }
+        if (!response.ok) {
+          console.error("Session validation failed", response.status);
+          return;
+        }
+
+        const data = (await response.json()) as {
+          user?: { id: string; name: string; email: string; role: "admin" | "customer" };
+        };
+        if (!data.user) {
+          console.error("Session validation returned no user");
+          return;
+        }
+        useSessionStore.getState().login({
+          userId: data.user.id,
+          name: data.user.name,
+          email: data.user.email,
+          role: data.user.role,
+          loggedInAt: new Date().toISOString(),
+        });
+      } catch (error) {
+        console.error("Session validation request failed", error);
+      }
+    };
+
+    void restoreSession();
+    return () => {
+      active = false;
+    };
   }, []);
 
   return (
